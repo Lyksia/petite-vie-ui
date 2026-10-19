@@ -11,7 +11,7 @@ Extrait de Parent Life (v1) sans rien y changer. Chaque jeu choisit la version q
 Dépendance git épinglée sur un tag (pas de build : CSS et TSX source, transpilés par Next) :
 
 ```bash
-pnpm add github:Lyksia/petite-vie-ui#v0.2.3
+pnpm add github:Lyksia/petite-vie-ui#v0.3.0
 ```
 
 `next.config.ts` :
@@ -50,10 +50,10 @@ Elles s'utilisent ensuite par leur chemin : `<GameIcon src="/img/icones/valeurs/
 ## Compte
 
 Un compte commun aux trois jeux dans sa forme (chacun garde sa propre API et sa propre base) :
-**un code de 6 caractères**, tiré par le serveur, sans e-mail ni donnée personnelle stockée.
+**un code de 8 caractères**, tiré par le serveur, sans e-mail ni donnée personnelle stockée.
 
-- Alphabet sans caractères ambigus (`23456789ABCDEFGHJKMNPQRSTUVWXYZ`, ni 0/O ni 1/I/L) : 31⁶ ≈ 887 millions de codes.
-- Affiché `K7M 4QX`, saisi n'importe comment (`k7m-4qx`, `K7M4QX`, ` k7m 4qx `).
+- Alphabet sans caractères ambigus (`23456789ABCDEFGHJKMNPQRSTUVWXYZ`, ni 0/O ni 1/I/L) : 31⁸ ≈ 852 milliards de codes (6 caractères jusqu'à la v0.2 : les codes existants doivent être migrés par chaque jeu).
+- Affiché en deux blocs de 4, `K7M4 QXT2`, saisi n'importe comment (`k7m4-qxt2`, `K7M4QXT2`, ` k7m4 qxt2 `).
 - À la création : une question secrète (liste commune) et une réponse libre.
 - « J'ai perdu mon code » : demande vérifiée à la main dans la vitrine, lien de récupération par e-mail (24 h, usage unique), question secrète (3 essais), nouveau code.
 - Jeton de transfert (15 min, usage unique) pour connecter directement un joueur qui arrive d'une autre adresse.
@@ -136,7 +136,8 @@ import {
 } from "@petite-vie/ui/compte/serveur";
 
 const PEPPER = process.env.ACCOUNT_CODE_PEPPER; // secret de l'API, jamais en base
-// 5 essais / 15 min par adresse (IPv6 regroupées par /64) ; au-delà de 300 ratés en 15 min toutes adresses confondues,
+// 5 essais / 15 min par adresse (IPv6 regroupées par /64), et 30 / 15 min par bloc IPv6 /48 ;
+// au-delà de 300 ratés en 15 min toutes adresses confondues,
 // « mode prudence » : 1 essai / 15 min par adresse et alerte. Jamais de blocage général (déni de service).
 const guard = createSignInGuard({ onAttack: (n) => alertAdmin(`${n} codes faux en 15 min`) });
 
@@ -165,14 +166,16 @@ Fonctions :
 
 | Export | Rôle |
 | --- | --- |
-| `generateCode()` | Nouveau code canonique (`K7M4QX`), tiré avec `crypto.randomInt`. |
-| `normalizeCode(saisie)` / `formatCode(code)` | Forme canonique ou `null` / affichage `K7M 4QX`. |
+| `generateCode()` | Nouveau code canonique de 8 caractères (`K7M4QXT2`), tiré avec `crypto.randomInt`. |
+| `normalizeCode(saisie)` / `formatCode(code)` | Forme canonique ou `null` / affichage `K7M4 QXT2`. |
 | `hashCode(code, pepper?)` | sha256 hex du code normalisé ; HMAC-SHA256 si un `pepper` est donné (conseillé). |
 | `normalizeAnswer(réponse)` | Minuscules, sans accents ni ligatures, ponctuation retirée, espaces réduits. |
 | `hashAnswer(réponse)` / `verifyAnswer(réponse, stockée)` | scrypt (N=16384, r=8, p=1, sel 16 octets) ; comparaison à temps constant. Format `scrypt$N$r$p$sel$empreinte`. |
 | `createOneTimeToken(ttlMs, now?)` | `{ token, tokenHash, expiresAt }` : 32 octets aléatoires en base64url ; seul `tokenHash` va en base. |
 | `hashToken(token)` / `isTokenUsable({ expiresAt, usedAt }, now?)` | Retrouver un jeton par empreinte ; vérifier qu'il n'a ni servi ni expiré. |
 | `createAttemptLimiter({ max, windowMs })` | Limiteur d'essais en mémoire. **`attempt(key)`** compte l'essai de façon atomique et dit s'il passe ; `succeed(key)` rembourse l'essai réussi ; `reset(key)` efface tout (admin, tests), jamais après une réussite. `check`/`fail` sont dépréciés (faille TOCTOU, voir plus bas). Interface `AttemptLimiter` remplaçable (Redis `INCR`, base), à condition que `attempt` reste atomique. |
+| `createSignInGuard({ settings?, onAttack? })` | Garde de connexion : `attempt(ip)`, `succeed(ip)`, `failed()`, `cautious()`. Réglages dans `SIGN_IN_GUARD` (`perIp`, `perIp48`, `perIpCautious`, `attack`, `maxKeys` = 100 000). |
+| `limiterKeyForIp(ip)` / `limiterKeyForIp48(ip)` | Clé par adresse (IPv4 telle quelle, IPv6 par /64) / clé du bloc IPv6 /48 (`null` en IPv4). |
 | `SECRET_QUESTIONS`, `SECRET_QUESTION_IDS`, `getSecretQuestion(id)` | Les 7 questions communes. Ne jamais retirer ni renommer un `id`. |
 | Schémas zod | `createAccountBodySchema`, `signInBodySchema`, `recoveryRequestBodySchema`, `recoveryAnswerBodySchema`, `transferBodySchema`, et les briques `accountCodeSchema`, `secretAnswerSchema`, `oneTimeTokenSchema`. |
 
@@ -257,8 +260,10 @@ model OneTimeToken {
 ### Règles de sécurité
 
 - **Rien de clair en base** : ni code (`hashCode`), ni réponse (`hashAnswer`), ni jeton (`hashToken`). Le code clair n'est renvoyé qu'à la création et à la récupération.
-- **Poivre conseillé** : avec 887 millions de codes, un sha256 nu se retrouve vite si la base fuite. `hashCode(code, process.env.ACCOUNT_CODE_PEPPER)` l'empêche ; le poivre ne doit jamais changer (sinon plus aucun code ne se retrouve).
-- **Compter avant de chercher** : `attempt()` (5 essais / 15 min par IP + un compteur global) avant tout `await`, puis `succeed` en cas de réussite (jamais `reset` : avec son propre code valide, un attaquant effacerait ses faux essais entre deux connexions et devinerait sans fin). Jamais `check()` → recherche async → `fail()` : N requêtes simultanées passeraient toutes le `check` avant le moindre `fail` (TOCTOU), c'est pourquoi `check`/`fail` sont dépréciés. Le limiteur fourni vit en mémoire d'un seul processus ; une API sur plusieurs instances le remplace par une implémentation partagée et atomique de l'interface `AttemptLimiter`.
+- **Poivre conseillé** : même avec 852 milliards de codes, un sha256 nu se teste hors ligne, sans limite d'essais, si la base fuite. `hashCode(code, process.env.ACCOUNT_CODE_PEPPER)` l'empêche ; le poivre ne doit jamais changer (sinon plus aucun code ne se retrouve).
+- **Compter avant de chercher** : `attempt()` (via `createSignInGuard`) avant tout `await`, puis `succeed` en cas de réussite (jamais `reset` : avec son propre code valide, un attaquant effacerait ses faux essais entre deux connexions et devinerait sans fin). Jamais `check()` → recherche async → `fail()` : N requêtes simultanées passeraient toutes le `check` avant le moindre `fail` (TOCTOU), c'est pourquoi `check`/`fail` sont dépréciés. Le limiteur fourni vit en mémoire d'un seul processus ; une API sur plusieurs instances le remplace par une implémentation partagée et atomique de l'interface `AttemptLimiter`.
+- **Adresses IPv6** : un abonné reçoit souvent un /48, soit 65 536 blocs /64. Le /64 seul lui laisserait 5 essais par bloc ; le garde ajoute donc un plafond de 30 essais / 15 min par /48 (`SIGN_IN_GUARD.perIp48`). **Rien de plus large en IPv4** : derrière un NAT d'opérateur (CGNAT), des milliers d'abonnés partagent une adresse ou un /24, et un plafond commun bloquerait de vrais joueurs ; la vague d'essais répartie est prise en charge par le mode prudence.
+- **Mémoire bornée sans oubli** : chaque compteur suit au plus `maxKeys` clés (100 000 pour le garde, 10 000 par défaut pour `createAttemptLimiter`). Une clé dont la fenêtre court n'est jamais évincée — sinon, en inondant de clés neuves, un attaquant remettrait ses propres compteurs à zéro. Une fois les clés expirées retirées, si c'est toujours plein, les clés nouvelles partagent un compteur de débordement commun (même `max`), jamais remboursé : on échoue de façon fermée pour elles, sans toucher aux compteurs existants. Les ratés globaux (mode prudence) sont comptés par seaux d'une minute : mémoire et coût constants.
 - **Même réponse pour « code inconnu »** quelle que soit la cause, et pas de route qui dise si un code existe sans compter l'essai.
 - **Jetons** : 32 octets aléatoires, usage unique (`usedAt` posé dans la même transaction que l'action), 24 h pour la récupération, 15 min pour le transfert. Ne jamais les journaliser.
 - **Question secrète** : 3 essais par lien, comptés en base par une mise à jour conditionnelle **avant** `verifyAnswer`, puis blocage ; la vérification est lente (scrypt) et à temps constant.
@@ -268,6 +273,12 @@ model OneTimeToken {
 ## Ce qui reste propre à chaque jeu
 
 Son nom, son icône d'application, son moteur, ses écrans, ses images (personnages, décors), son service worker et ses clés de stockage. Le kit ne contient que ce qui est commun aux trois.
+
+## Passer de la v0.2 à la v0.3
+
+**Changement incompatible** : les codes font désormais 8 caractères (`CODE_LENGTH = 8`, affichage `K7M4 QXT2`).
+`normalizeCode`, `hashCode` et `signInBodySchema` refusent les anciens codes à 6 caractères : un jeu qui en a déjà
+distribué doit les migrer (nouveau code pour chaque compte, à remettre au joueur) avant de prendre cette version.
 
 ## Publier une version
 

@@ -3,8 +3,10 @@ import { createAccountBodySchema, recoveryAnswerBodySchema, recoveryRequestBodyS
 
 describe("schémas des corps de requête", () => {
   it("normalise le code à la connexion", () => {
-    expect(signInBodySchema.parse({ code: "k7m-4qx" })).toEqual({ code: "K7M4QX" });
-    expect(signInBodySchema.safeParse({ code: "K0M4QX" }).success).toBe(false);
+    expect(signInBodySchema.parse({ code: "k7m4-qxt2" })).toEqual({ code: "K7M4QXT2" });
+    expect(signInBodySchema.parse({ code: " K7M4 QXT2 " })).toEqual({ code: "K7M4QXT2" });
+    expect(signInBodySchema.safeParse({ code: "K0M4QXT2" }).success).toBe(false);
+    expect(signInBodySchema.safeParse({ code: "K7M4QX" }).success).toBe(false);
   });
 
   it("valide la création", () => {

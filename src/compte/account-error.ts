@@ -3,7 +3,7 @@ export const ACCOUNT_MESSAGES = {
   network: "Ça n'a pas marché. Vérifie ta connexion et réessaie.",
   unknownCode: "Ce code ne correspond à aucun compte. Vérifie chaque caractère.",
   tooManyAttempts: "Trop d'essais d'un coup. Attends un quart d'heure avant de réessayer.",
-  invalidCode: "Un code fait 6 lettres et chiffres, comme K7M 4QX.",
+  invalidCode: "Un code fait 8 lettres et chiffres, comme K7M4 QXT2.",
 } as const;
 
 /**

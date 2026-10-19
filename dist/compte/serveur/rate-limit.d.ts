@@ -18,7 +18,10 @@ export type AttemptLimiter = {
      * À appeler avant toute vérification asynchrone : N requêtes simultanées ne peuvent pas dépasser `max`.
      */
     attempt(key: string): AttemptStatus;
-    /** Rembourse un essai accordé par `attempt` (réussite qui ne doit pas peser, ex. sur le compteur global). */
+    /**
+     * Rembourse un essai accordé par `attempt` (réussite qui ne doit pas peser). Sans effet sur une clé passée par
+     * le compteur de débordement commun : celui-ci n'est jamais remboursé.
+     */
     succeed(key: string): void;
     /**
      * Efface tout le compteur d'une clé (outil d'admin, tests).
@@ -42,7 +45,11 @@ export type AttemptLimiterOptions = {
     max: number;
     /** Durée de la fenêtre, à partir du premier essai compté. */
     windowMs: number;
-    /** Au-delà, les clés expirées sont purgées (protège la mémoire). Défaut : 10 000. */
+    /**
+     * Nombre maximal de clés suivies (protège la mémoire). Défaut : 10 000.
+     * Une fois plein, les clés expirées sont retirées ; si c'est toujours plein, les clés NOUVELLES partagent un
+     * compteur de débordement commun (même `max`, même fenêtre). Aucune clé dont la fenêtre court n'est jamais oubliée.
+     */
     maxKeys?: number;
     /** Horloge, pour les tests. */
     now?: () => number;
@@ -71,6 +78,11 @@ export declare const RECOVERY_ANSWER_LIMIT: {
  * Limiteur d'essais en mémoire, à fenêtre fixe par clé : `max` essais accordés par `attempt`, puis refus jusqu'à
  * la fin de la fenêtre ouverte par le premier essai. `attempt` est synchrone, donc atomique dans un processus Node.
  * Propre à un processus : une API sur plusieurs instances doit le remplacer.
+ *
+ * Mémoire bornée sans faille : quand `maxKeys` clés actives sont suivies, une clé nouvelle n'en chasse aucune
+ * (sinon, en inondant de clés neuves, un attaquant remettrait à zéro ses propres compteurs). Elle tombe dans un
+ * compteur de débordement commun à toutes les clés nouvelles, de même `max` : on échoue de façon fermée pour
+ * elles, sans toucher aux compteurs existants, jusqu'à ce que des fenêtres expirent.
  *
  * ```ts
  * if (!perIp.attempt(ip).allowed || !everyone.attempt("global").allowed) return c.json({ error: "trop-d-essais" }, 429);

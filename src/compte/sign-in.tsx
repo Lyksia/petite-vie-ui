@@ -11,7 +11,7 @@ import { useSubmit } from "./use-submit";
 
 export type SignInProps = {
   gameName: string;
-  /** Reçoit le code déjà normalisé (« K7M4QX »). Lever AccountFormError(ACCOUNT_MESSAGES.unknownCode…) si refusé. */
+  /** Reçoit le code déjà normalisé (« K7M4QXT2 »). Lever AccountFormError(ACCOUNT_MESSAGES.unknownCode…) si refusé. */
   onSignIn: (code: string) => Promise<void>;
   /** Lien « J'ai perdu mon code ». */
   onLostCode?: () => void;
@@ -50,8 +50,8 @@ export function SignIn({ gameName, onSignIn, onLostCode, onCreateInstead, title 
           label="Ton code"
           value={value}
           onChange={setValue}
-          maxLength={12}
-          placeholder="K7M 4QX"
+          maxLength={16}
+          placeholder="K7M4 QXT2"
           error={fieldError}
           autoComplete="off"
           autoCapitalize="characters"

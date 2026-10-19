@@ -27,6 +27,7 @@ describe("dist/ du sous-chemin serveur", () => {
     const compiled = await import(join(root, "dist/compte/serveur/index.js"));
     const source = await import("./index.js");
     expect(Object.keys(compiled).sort()).toEqual(Object.keys(source).sort());
-    expect(compiled.normalizeCode("k7m-4qx")).toBe("K7M4QX");
+    expect(compiled.normalizeCode("k7m4-qxt2")).toBe("K7M4QXT2");
+    expect(compiled.CODE_LENGTH).toBe(8);
   });
 });

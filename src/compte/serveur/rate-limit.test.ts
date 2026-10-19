@@ -65,11 +65,29 @@ describe("createAttemptLimiter", () => {
     expect(limiter.attempt("a").allowed).toBe(false);
   });
 
-  it("borne la mémoire", () => {
+  it("rempli de clés nouvelles, ne remet jamais à zéro une clé active", () => {
     const { limiter } = setup(3);
-    for (const key of ["a", "b", "c", "d"]) limiter.attempt(key);
-    expect(limiter.attempt("a").remaining).toBe(4);
-    expect(limiter.attempt("d").remaining).toBe(3);
+    for (let index = 0; index < 5; index++) limiter.attempt("victime");
+    expect(limiter.attempt("victime").allowed).toBe(false);
+    // L'attaquant inonde de clés neuves pour chasser « victime » de la Map
+    for (let index = 0; index < 1000; index++) limiter.attempt(`neuve-${index}`);
+    expect(limiter.attempt("victime").allowed).toBe(false);
+  });
+
+  it("partage un compteur de débordement entre clés nouvelles, qui refuse au-delà de max", () => {
+    const { limiter, advance } = setup(3);
+    for (const key of ["a", "b", "c"]) limiter.attempt(key);
+    const results = Array.from({ length: 8 }, (_, index) => limiter.attempt(`nouvelle-${index}`).allowed);
+    expect(results.filter(Boolean)).toHaveLength(5);
+    expect(limiter.attempt("encore-une").allowed).toBe(false);
+    // Les clés suivies gardent leur propre compteur, intact
+    expect(limiter.attempt("a").remaining).toBe(3);
+    // succeed ne rembourse pas le débordement (échec fermé)
+    limiter.succeed("nouvelle-0");
+    expect(limiter.attempt("nouvelle-9").allowed).toBe(false);
+    // Les fenêtres expirent : la place se libère et les clés nouvelles retrouvent leur propre compteur
+    advance(15 * 60 * 1000);
+    expect(limiter.attempt("nouvelle-10")).toEqual({ allowed: true, remaining: 4, retryAfterMs: 0 });
   });
 
   it("garde check/fail (dépréciés) pour la compatibilité", () => {

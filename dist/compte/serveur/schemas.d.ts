@@ -1,5 +1,5 @@
 import { z } from "zod";
-/** Un code de compte saisi librement, rendu sous forme canonique (« k7m-4qx » → « K7M4QX »). */
+/** Un code de compte saisi librement, rendu sous forme canonique (« k7m4-qxt2 » → « K7M4QXT2 »). */
 export declare const accountCodeSchema: z.ZodPipe<z.ZodString, z.ZodTransform<string, string>>;
 /** Une réponse secrète : non vide une fois normalisée. Gardée telle quelle (hashAnswer normalise). */
 export declare const secretAnswerSchema: z.ZodString;

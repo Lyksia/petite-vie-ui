@@ -19,7 +19,10 @@ export type AttemptLimiter = {
    * À appeler avant toute vérification asynchrone : N requêtes simultanées ne peuvent pas dépasser `max`.
    */
   attempt(key: string): AttemptStatus;
-  /** Rembourse un essai accordé par `attempt` (réussite qui ne doit pas peser, ex. sur le compteur global). */
+  /**
+   * Rembourse un essai accordé par `attempt` (réussite qui ne doit pas peser). Sans effet sur une clé passée par
+   * le compteur de débordement commun : celui-ci n'est jamais remboursé.
+   */
   succeed(key: string): void;
   /**
    * Efface tout le compteur d'une clé (outil d'admin, tests).
@@ -44,7 +47,11 @@ export type AttemptLimiterOptions = {
   max: number;
   /** Durée de la fenêtre, à partir du premier essai compté. */
   windowMs: number;
-  /** Au-delà, les clés expirées sont purgées (protège la mémoire). Défaut : 10 000. */
+  /**
+   * Nombre maximal de clés suivies (protège la mémoire). Défaut : 10 000.
+   * Une fois plein, les clés expirées sont retirées ; si c'est toujours plein, les clés NOUVELLES partagent un
+   * compteur de débordement commun (même `max`, même fenêtre). Aucune clé dont la fenêtre court n'est jamais oubliée.
+   */
   maxKeys?: number;
   /** Horloge, pour les tests. */
   now?: () => number;
@@ -68,6 +75,11 @@ export const RECOVERY_ANSWER_LIMIT = { max: 3, windowMs: 24 * 60 * 60 * 1000 } a
  * la fin de la fenêtre ouverte par le premier essai. `attempt` est synchrone, donc atomique dans un processus Node.
  * Propre à un processus : une API sur plusieurs instances doit le remplacer.
  *
+ * Mémoire bornée sans faille : quand `maxKeys` clés actives sont suivies, une clé nouvelle n'en chasse aucune
+ * (sinon, en inondant de clés neuves, un attaquant remettrait à zéro ses propres compteurs). Elle tombe dans un
+ * compteur de débordement commun à toutes les clés nouvelles, de même `max` : on échoue de façon fermée pour
+ * elles, sans toucher aux compteurs existants, jusqu'à ce que des fenêtres expirent.
+ *
  * ```ts
  * if (!perIp.attempt(ip).allowed || !everyone.attempt("global").allowed) return c.json({ error: "trop-d-essais" }, 429);
  * const account = await findAccount(code); // l'essai est déjà compté
@@ -77,6 +89,8 @@ export const RECOVERY_ANSWER_LIMIT = { max: 3, windowMs: 24 * 60 * 60 * 1000 } a
 export function createAttemptLimiter({ max, windowMs, maxKeys = 10_000, now = Date.now }: AttemptLimiterOptions): AttemptLimiter {
   if (!(max > 0) || !(windowMs > 0)) throw new Error("Limiteur : max et windowMs doivent être positifs");
   const entries = new Map<string, { count: number; resetAt: number }>();
+  // Compteur commun des clés nouvelles quand la Map est pleine de clés actives
+  let overflow: { count: number; resetAt: number } | undefined;
 
   const current = (key: string, time: number) => {
     const entry = entries.get(key);
@@ -87,24 +101,36 @@ export function createAttemptLimiter({ max, windowMs, maxKeys = 10_000, now = Da
     return entry;
   };
 
+  const currentOverflow = (time: number) => {
+    if (overflow && overflow.resetAt <= time) overflow = undefined;
+    return overflow;
+  };
+
   const status = (count: number, resetAt: number, time: number): AttemptStatus => {
     const allowed = count < max;
     return { allowed, remaining: Math.max(0, max - count), retryAfterMs: allowed ? 0 : resetAt - time };
   };
 
+  // Les clés sont ajoutées dans l'ordre de leur échéance (même fenêtre pour toutes) : on s'arrête à la première
+  // encore active, donc le coût ne dépend que du nombre de clés expirées, même sous une inondation de clés neuves.
   const prune = (time: number) => {
-    for (const [key, entry] of entries) if (entry.resetAt <= time) entries.delete(key);
+    for (const [key, entry] of entries) {
+      if (entry.resetAt > time) break;
+      entries.delete(key);
+    }
   };
 
+  /** Le compteur de la clé : le sien, un neuf s'il reste de la place, sinon le compteur de débordement commun. */
   const entryFor = (key: string, time: number) => {
-    let entry = current(key, time);
-    if (!entry) {
-      if (entries.size >= maxKeys) prune(time);
-      // Toujours plein : on oublie la plus ancienne clé (le compteur « global » reste le garde-fou).
-      if (entries.size >= maxKeys) entries.delete(entries.keys().next().value as string);
-      entry = { count: 0, resetAt: time + windowMs };
-      entries.set(key, entry);
+    const existing = current(key, time);
+    if (existing) return existing;
+    if (entries.size >= maxKeys) prune(time);
+    if (entries.size >= maxKeys) {
+      overflow = currentOverflow(time) ?? { count: 0, resetAt: time + windowMs };
+      return overflow;
     }
+    const entry = { count: 0, resetAt: time + windowMs };
+    entries.set(key, entry);
     return entry;
   };
 
@@ -117,6 +143,7 @@ export function createAttemptLimiter({ max, windowMs, maxKeys = 10_000, now = Da
       return { allowed: true, remaining: max - entry.count, retryAfterMs: 0 };
     },
     succeed(key) {
+      // Seul le compteur propre de la clé est remboursé : le débordement commun ne l'est jamais (échec fermé)
       const entry = current(key, now());
       if (entry && entry.count > 0) entry.count--;
     },
@@ -125,7 +152,7 @@ export function createAttemptLimiter({ max, windowMs, maxKeys = 10_000, now = Da
     },
     check(key) {
       const time = now();
-      const entry = current(key, time);
+      const entry = current(key, time) ?? (entries.size >= maxKeys ? currentOverflow(time) : undefined);
       return entry ? status(entry.count, entry.resetAt, time) : status(0, time + windowMs, time);
     },
     fail(key) {

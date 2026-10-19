@@ -3,10 +3,10 @@ import { ANSWER_MAX_LENGTH, normalizeAnswer } from "../answer-format.js";
 import { normalizeCode } from "../code-format.js";
 import { SECRET_QUESTION_IDS } from "../questions.js";
 
-/** Un code de compte saisi librement, rendu sous forme canonique (« k7m-4qx » → « K7M4QX »). */
+/** Un code de compte saisi librement, rendu sous forme canonique (« k7m4-qxt2 » → « K7M4QXT2 »). */
 export const accountCodeSchema = z
   .string()
-  .max(20)
+  .max(24)
   .transform((value, context) => {
     const code = normalizeCode(value);
     if (!code) {

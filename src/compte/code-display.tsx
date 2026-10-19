@@ -7,7 +7,7 @@ export function CodeDisplay({ code, hidden = false }: { code: string; hidden?: b
     <p className="rounded-champ border-2 border-terre bg-sable px-4 py-3 text-center font-display text-4xl tracking-widest text-terre-fonce">
       {hidden ? (
         <>
-          <span aria-hidden>••• •••</span>
+          <span aria-hidden>•••• ••••</span>
           <span className="sr-only">Code masqué</span>
         </>
       ) : (
