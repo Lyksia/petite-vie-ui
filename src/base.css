@@ -1,0 +1,5 @@
+/* Fond crème et texte terre pour toute la page. */
+body {
+  background: var(--color-creme);
+  color: var(--color-terre);
+}

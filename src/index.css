@@ -1,0 +1,9 @@
+/* @petite-vie/ui — feuille complète : charte (thème Tailwind), utilitaires, base.
+   Le consommateur déclare avant : @import "tailwindcss";
+   et pose --font-nunito-sans / --font-baloo (next/font) sur <html>. */
+@import "./theme.css";
+@import "./utilities.css";
+@import "./base.css";
+
+/* Les classes des composants du kit doivent être générées chez le consommateur */
+@source "./components";

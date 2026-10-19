@@ -1,0 +1,20 @@
+/* Utilitaires de la charte : fond pointillé, points clairs des bandeaux, défilement sans barre. */
+/* Fond pointillé discret : l'écran n'est plus un aplat */
+@utility fond-points {
+  background-image: radial-gradient(rgb(67 39 24 / 0.07) 1px, transparent 1.4px);
+  background-size: 16px 16px;
+}
+
+/* Petits points clairs sur le bandeau coloré */
+@utility points-clairs {
+  background-image: radial-gradient(rgb(255 255 255 / 0.45) 1.2px, transparent 1.6px);
+  background-size: 18px 18px;
+}
+
+/* Rangée qui défile au doigt, sans barre visible */
+@utility sans-barre {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

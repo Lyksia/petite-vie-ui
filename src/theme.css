@@ -1,0 +1,125 @@
+/* @petite-vie/ui — la charte Petite Vie exposée à Tailwind v4 : couleurs, rayons, ombres, animations.
+   Les polices viennent du consommateur (next/font) : --font-nunito-sans (texte) et --font-baloo (titres). */
+@theme {
+  --font-sans: var(--font-nunito-sans);
+  --font-display: var(--font-baloo);
+
+  /* Charte graphique v1 */
+  --color-terre: #432718;
+  --color-terre-fonce: #321c11;
+  --color-corail: #ec6959;
+  --color-corail-tranche: #c65142;
+  --color-corail-pale: #f4c8b9;
+  --color-sauge: #5f6f42;
+  --color-sauge-claire: #e6ebdc;
+  --color-creme: #fff8ec;
+  --color-sable: #f0ddc4;
+  --color-terre-douce: #80685b;
+
+  /* Teintes des jauges : distinctes, mates, accordées à la palette */
+  --color-abricot: #e3874f;
+  --color-miel: #dca233;
+  --color-pousse: #7f9a52;
+  --color-framboise: #d0607a;
+  --color-prune: #8a6aae;
+  --color-lin: #5b8db0;
+
+  /* Maquette v3 : bandeau coloré en haut de chaque onglet, et la nuit des notifications */
+  --color-bande-sauge: #dfe6d1;
+  --color-bande-miel: #f6e3b9;
+  --color-bande-lin: #dbe6ef;
+  --color-bande-corail: #f7d9cd;
+  --color-bande-prune: #e7dff0;
+  --color-nuit: #3a2216;
+
+  --radius-bande: 38px;
+  --radius-champ: 14px;
+  --radius-bouton: 18px;
+  --radius-fiche: 22px;
+
+  --shadow-relief: 0 4px 0 var(--color-corail-tranche);
+  --shadow-relief-sauge: 0 3px 0 var(--color-sauge);
+  --shadow-fiche: 0 -4px 0 rgb(67 39 24 / 0.08);
+  --shadow-carte: 0 6px 0 rgb(67 39 24 / 0.2);
+  --shadow-pose: 0 3px 0 rgb(67 39 24 / 0.12);
+
+  --animate-breathe: breathe 3.2s ease-in-out infinite;
+  --animate-pop: pop 0.35s ease-out;
+  --animate-sheet: sheet-up 0.28s ease-out;
+
+  /* Le tiroir de la vitrine monte depuis le bas */
+  @keyframes sheet-up {
+    from {
+      transform: translateY(40%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  --animate-hop: hop 0.6s ease-out;
+  --animate-float: float-up 1.6s ease-out forwards;
+  --animate-fade-out: fade-out 3s ease-in forwards;
+
+  /* Petit saut de joie après un soin */
+  @keyframes hop {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+    30% {
+      transform: translateY(-14px) scale(1.04, 0.97);
+    }
+    60% {
+      transform: translateY(0) scale(0.98, 1.03);
+    }
+  }
+
+  /* Cœurs, miettes, étoiles qui s'envolent */
+  @keyframes float-up {
+    from {
+      opacity: 0;
+      transform: translateY(0) scale(0.6);
+    }
+    20% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-70px) scale(1.1);
+    }
+  }
+
+  /* La bulle reste lisible puis s'efface */
+  @keyframes fade-out {
+    0%,
+    75% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes breathe {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+    50% {
+      transform: translateY(-4px) scale(1.015);
+    }
+  }
+
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
