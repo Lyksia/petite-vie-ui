@@ -1,5 +1,5 @@
 import { createMinuteCounter } from "./minute-counter.js";
-import { createAttemptLimiter, type AttemptLimiter, type AttemptStatus } from "./rate-limit.js";
+import { createAttemptLimiter, type AttemptStatus, type MemoryAttemptLimiter } from "./rate-limit.js";
 
 /** Les 8 groupes d'une IPv6 (sans zéros en tête), ou `null` pour une IPv4 (y compris « ::ffff:1.2.3.4 »). */
 function ipv6Groups(ip: string): string[] | null {
@@ -71,6 +71,8 @@ export type SignInGuard = {
   failed(): void;
   /** Le mode prudence est-il actif ? */
   cautious(): boolean;
+  /** Clés suivies par chaque compteur (surveillance de la mémoire). */
+  trackedKeys(): { perIp: number; perIp48: number; cautious: number };
 };
 
 /**
@@ -90,35 +92,33 @@ export function createSignInGuard({
   now = Date.now,
 }: { settings?: SignInGuardSettings; onAttack?: (failures: number) => void; now?: () => number } = {}): SignInGuard {
   const { maxKeys } = settings;
-  const normal: AttemptLimiter = createAttemptLimiter({ ...settings.perIp, maxKeys, now });
-  const block48: AttemptLimiter = createAttemptLimiter({ ...settings.perIp48, maxKeys, now });
-  const careful: AttemptLimiter = createAttemptLimiter({ ...settings.perIpCautious, maxKeys, now });
+  const normal: MemoryAttemptLimiter = createAttemptLimiter({ ...settings.perIp, maxKeys, now });
+  const block48: MemoryAttemptLimiter = createAttemptLimiter({ ...settings.perIp48, maxKeys, now });
+  const careful: MemoryAttemptLimiter = createAttemptLimiter({ ...settings.perIpCautious, maxKeys, now });
   const failures = createMinuteCounter(settings.attack.windowMs, now);
   let cautiousUntil = 0;
   const cautious = () => now() < cautiousUntil;
   return {
     attempt(ip) {
       const key = limiterKeyForIp(ip);
-      const strict = cautious();
-      // Le compteur normal compte toujours : à la fin du mode prudence, on ne repart pas de zéro
-      const status = normal.attempt(key);
-      if (!status.allowed) return { ...status, cautious: strict };
       const wide = limiterKeyForIp48(ip);
+      const strict = cautious();
+      // 1. Vérifier tous les plafonds SANS rien créer ni compter : un refus ne laisse aucune entrée à 0
+      //    (sinon une inondation remplirait les compteurs à vide). Tout est synchrone : pas de TOCTOU.
+      const perAddress = normal.peek(key);
+      if (!perAddress.allowed) return { ...perAddress, cautious: strict };
       if (wide) {
-        const block = block48.attempt(wide);
-        if (!block.allowed) {
-          normal.succeed(key);
-          return { ...block, cautious: strict };
-        }
+        const block = block48.peek(wide);
+        if (!block.allowed) return { ...block, cautious: strict };
       }
       if (strict) {
-        const tight = careful.attempt(key);
-        if (!tight.allowed) {
-          normal.succeed(key);
-          if (wide) block48.succeed(wide);
-          return { ...tight, cautious: true };
-        }
+        const tight = careful.peek(key);
+        if (!tight.allowed) return { ...tight, cautious: true };
       }
+      // 2. Tout passe : compter partout. Le compteur normal compte toujours (pas de remise à zéro en fin de prudence).
+      const status = normal.attempt(key);
+      if (wide) block48.attempt(wide);
+      if (strict) careful.attempt(key);
       return { ...status, cautious: strict };
     },
     succeed(ip) {
@@ -136,5 +136,6 @@ export function createSignInGuard({
       }
     },
     cautious,
+    trackedKeys: () => ({ perIp: normal.size(), perIp48: block48.size(), cautious: careful.size() }),
   };
 }

@@ -43,6 +43,25 @@ describe("createSignInGuard", () => {
     expect(guard.attempt("2001:db8:aa:2::1").allowed).toBe(true);
   });
 
+  it("un refus au /48 ne crée aucune entrée /64", () => {
+    const settings = { ...SIGN_IN_GUARD, perIp48: { max: 1, windowMs: 15 * 60 * 1000 } };
+    const guard = createSignInGuard({ settings, now: () => 0 });
+    expect(guard.attempt("2001:db8:aa:1::1").allowed).toBe(true);
+    for (let block = 2; block < 500; block++) expect(guard.attempt(`2001:db8:aa:${block.toString(16)}::1`).allowed).toBe(false);
+    expect(guard.trackedKeys()).toEqual({ perIp: 1, perIp48: 1, cautious: 0 });
+  });
+
+  it("en mode prudence, un refus ne crée aucune entrée qu'on rembourserait aussitôt", () => {
+    const settings = { ...SIGN_IN_GUARD, attack: { failures: 1, windowMs: 15 * 60 * 1000 } };
+    const guard = createSignInGuard({ settings, now: () => 0 });
+    guard.failed(); // mode prudence
+    expect(guard.attempt("198.51.100.7").allowed).toBe(true);
+    expect(guard.attempt("198.51.100.7").allowed).toBe(false);
+    expect(guard.trackedKeys()).toEqual({ perIp: 1, perIp48: 0, cautious: 1 });
+    expect(guard.attempt("198.51.100.7").allowed).toBe(false);
+    expect(guard.trackedKeys()).toEqual({ perIp: 1, perIp48: 0, cautious: 1 });
+  });
+
   it("aucun plafond plus large que l'adresse en IPv4 (NAT d'opérateur)", () => {
     const guard = createSignInGuard({ now: () => 0 });
     for (let host = 1; host <= 100; host++) expect(guard.attempt(`100.64.0.${host}`).allowed).toBe(true);

@@ -10,6 +10,7 @@ export {
   createAttemptLimiter,
   type AttemptLimiter,
   type AttemptLimiterOptions,
+  type MemoryAttemptLimiter,
   type AttemptStatus,
 } from "./rate-limit.js";
 export { SIGN_IN_GUARD, createSignInGuard, limiterKeyForIp, limiterKeyForIp48, type SignInGuard, type SignInGuardSettings } from "./sign-in-guard.js";

@@ -69,6 +69,12 @@ export type SignInGuard = {
     failed(): void;
     /** Le mode prudence est-il actif ? */
     cautious(): boolean;
+    /** Clés suivies par chaque compteur (surveillance de la mémoire). */
+    trackedKeys(): {
+        perIp: number;
+        perIp48: number;
+        cautious: number;
+    };
 };
 /**
  * Garde de la connexion par code, sans blocage général : une vague d'essais répartie sur beaucoup d'adresses

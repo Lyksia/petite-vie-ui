@@ -74,20 +74,39 @@ describe("createAttemptLimiter", () => {
     expect(limiter.attempt("victime").allowed).toBe(false);
   });
 
-  it("partage un compteur de débordement entre clés nouvelles, qui refuse au-delà de max", () => {
+  it("évince une clé à zéro avant de déborder, sans toucher aux clés actives", () => {
+    const { limiter } = setup(3);
+    limiter.attempt("remboursee");
+    limiter.succeed("remboursee"); // compteur revenu à 0
+    limiter.attempt("b");
+    limiter.attempt("c");
+    // Map pleine : « d » prend la place de la clé à zéro et obtient son propre compteur (max 5, pas 20)
+    expect(limiter.attempt("d")).toEqual({ allowed: true, remaining: 4, retryAfterMs: 0 });
+    expect(limiter.size()).toBe(3);
+    expect(limiter.attempt("b").remaining).toBe(3);
+    expect(limiter.attempt("c").remaining).toBe(3);
+  });
+
+  it("déborde par compartiment (max × 4), sans remboursement, quand toutes les clés sont actives", () => {
     const { limiter, advance } = setup(3);
     for (const key of ["a", "b", "c"]) limiter.attempt(key);
-    const results = Array.from({ length: 8 }, (_, index) => limiter.attempt(`nouvelle-${index}`).allowed);
-    expect(results.filter(Boolean)).toHaveLength(5);
-    expect(limiter.attempt("encore-une").allowed).toBe(false);
+    const results = Array.from({ length: 25 }, () => limiter.attempt("nouvelle").allowed);
+    expect(results.filter(Boolean)).toHaveLength(20);
+    limiter.succeed("nouvelle"); // le débordement n'est jamais remboursé
+    expect(limiter.attempt("nouvelle").allowed).toBe(false);
     // Les clés suivies gardent leur propre compteur, intact
     expect(limiter.attempt("a").remaining).toBe(3);
-    // succeed ne rembourse pas le débordement (échec fermé)
-    limiter.succeed("nouvelle-0");
-    expect(limiter.attempt("nouvelle-9").allowed).toBe(false);
     // Les fenêtres expirent : la place se libère et les clés nouvelles retrouvent leur propre compteur
     advance(15 * 60 * 1000);
-    expect(limiter.attempt("nouvelle-10")).toEqual({ allowed: true, remaining: 4, retryAfterMs: 0 });
+    expect(limiter.attempt("nouvelle")).toEqual({ allowed: true, remaining: 4, retryAfterMs: 0 });
+  });
+
+  it("une inondation de clés n'empêche pas la plupart des clés nouvelles légitimes de passer", () => {
+    const { limiter } = setup(100);
+    // L'attaquant sature la Map puis fait tourner 10 000 clés neuves (une par essai, comme une rotation d'adresses)
+    for (let index = 0; index < 10_000; index++) limiter.attempt(`attaque-${index}`);
+    const legit = Array.from({ length: 500 }, (_, index) => limiter.attempt(`joueur-${index}`).allowed);
+    expect(legit.filter(Boolean).length).toBeGreaterThanOrEqual(450);
   });
 
   it("garde check/fail (dépréciés) pour la compatibilité", () => {

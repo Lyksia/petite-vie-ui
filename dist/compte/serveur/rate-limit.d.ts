@@ -47,10 +47,15 @@ export type AttemptLimiterOptions = {
     windowMs: number;
     /**
      * Nombre maximal de clés suivies (protège la mémoire). Défaut : 10 000.
-     * Une fois plein, les clés expirées sont retirées ; si c'est toujours plein, les clés NOUVELLES partagent un
-     * compteur de débordement commun (même `max`, même fenêtre). Aucune clé dont la fenêtre court n'est jamais oubliée.
+     * Une fois plein : on retire les clés expirées, puis on évince une clé dont le compteur est à 0 ; sinon la clé
+     * nouvelle tombe dans un compartiment de débordement choisi par empreinte de la clé. Aucune clé active
+     * (compteur > 0, fenêtre en cours) n'est jamais oubliée.
      */
     maxKeys?: number;
+    /** Nombre de compartiments de débordement (répartis par empreinte FNV-1a de la clé). Défaut : 1 024. */
+    overflowBuckets?: number;
+    /** Plafond d'un compartiment de débordement, en multiple de `max`. Défaut : 4. */
+    overflowFactor?: number;
     /** Horloge, pour les tests. */
     now?: () => number;
 };
@@ -79,10 +84,16 @@ export declare const RECOVERY_ANSWER_LIMIT: {
  * la fin de la fenêtre ouverte par le premier essai. `attempt` est synchrone, donc atomique dans un processus Node.
  * Propre à un processus : une API sur plusieurs instances doit le remplacer.
  *
- * Mémoire bornée sans faille : quand `maxKeys` clés actives sont suivies, une clé nouvelle n'en chasse aucune
- * (sinon, en inondant de clés neuves, un attaquant remettrait à zéro ses propres compteurs). Elle tombe dans un
- * compteur de débordement commun à toutes les clés nouvelles, de même `max` : on échoue de façon fermée pour
- * elles, sans toucher aux compteurs existants, jusqu'à ce que des fenêtres expirent.
+ * Mémoire bornée, sans éviction d'une clé active : quand `maxKeys` clés sont suivies, une clé nouvelle prend
+ * d'abord la place d'une clé expirée, puis d'une clé dont le compteur est à 0 (remboursée par `succeed`, ou jamais
+ * comptée) : en oublier une ne rend aucun essai à personne. Si toutes les clés suivies ont des essais en cours,
+ * aucune n'est chassée (sinon, en inondant de clés neuves, un attaquant remettrait ses propres compteurs à zéro) :
+ * la clé nouvelle tombe dans l'un des `overflowBuckets` compartiments de débordement, choisi par empreinte de la
+ * clé, plafonné à `max × overflowFactor` et jamais remboursé.
+ *
+ * Compromis : le débordement échoue de façon fermée, mais il est réparti. Une inondation qui sature la Map ne
+ * bloque pas tous les nouveaux joueurs d'un coup : chacun ne partage son compteur qu'avec ~1/1 024 des autres
+ * clés nouvelles, et retrouve un compteur propre dès que des fenêtres expirent ou que des clés reviennent à 0.
  *
  * ```ts
  * if (!perIp.attempt(ip).allowed || !everyone.attempt("global").allowed) return c.json({ error: "trop-d-essais" }, 429);
@@ -90,4 +101,14 @@ export declare const RECOVERY_ANSWER_LIMIT: {
  * if (account) { perIp.succeed(ip); everyone.succeed("global"); } // rembourse cet essai, les ratés restent comptés
  * ```
  */
-export declare function createAttemptLimiter({ max, windowMs, maxKeys, now }: AttemptLimiterOptions): AttemptLimiter;
+/** Limiteur en mémoire : l'interface commune, plus `peek` pour enchaîner plusieurs limiteurs sans rien créer à vide. */
+export type MemoryAttemptLimiter = AttemptLimiter & {
+    /**
+     * État qu'aurait `attempt(key)` maintenant, sans rien créer ni compter. Sûr uniquement s'il est suivi, dans le
+     * même tour synchrone (sans `await` entre les deux), de l'`attempt` correspondant.
+     */
+    peek(key: string): AttemptStatus;
+    /** Nombre de clés suivies avec leur propre compteur (surveillance de la mémoire). */
+    size(): number;
+};
+export declare function createAttemptLimiter({ max, windowMs, maxKeys, overflowBuckets, overflowFactor, now, }: AttemptLimiterOptions): MemoryAttemptLimiter;

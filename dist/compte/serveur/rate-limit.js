@@ -9,44 +9,44 @@ export const SIGN_IN_LIMITS = {
 };
 /** Limite conseillée pour la réponse à la question de récupération : 3 essais, puis blocage 24 h. */
 export const RECOVERY_ANSWER_LIMIT = { max: 3, windowMs: 24 * 60 * 60 * 1000 };
-/**
- * Limiteur d'essais en mémoire, à fenêtre fixe par clé : `max` essais accordés par `attempt`, puis refus jusqu'à
- * la fin de la fenêtre ouverte par le premier essai. `attempt` est synchrone, donc atomique dans un processus Node.
- * Propre à un processus : une API sur plusieurs instances doit le remplacer.
- *
- * Mémoire bornée sans faille : quand `maxKeys` clés actives sont suivies, une clé nouvelle n'en chasse aucune
- * (sinon, en inondant de clés neuves, un attaquant remettrait à zéro ses propres compteurs). Elle tombe dans un
- * compteur de débordement commun à toutes les clés nouvelles, de même `max` : on échoue de façon fermée pour
- * elles, sans toucher aux compteurs existants, jusqu'à ce que des fenêtres expirent.
- *
- * ```ts
- * if (!perIp.attempt(ip).allowed || !everyone.attempt("global").allowed) return c.json({ error: "trop-d-essais" }, 429);
- * const account = await findAccount(code); // l'essai est déjà compté
- * if (account) { perIp.succeed(ip); everyone.succeed("global"); } // rembourse cet essai, les ratés restent comptés
- * ```
- */
-export function createAttemptLimiter({ max, windowMs, maxKeys = 10_000, now = Date.now }) {
+/** Empreinte FNV-1a 32 bits d'une chaîne (rapide, non cryptographique : sert seulement à répartir). */
+function fnv1a(text) {
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < text.length; index++) {
+        hash ^= text.charCodeAt(index);
+        hash = Math.imul(hash, 0x01000193);
+    }
+    return hash >>> 0;
+}
+export function createAttemptLimiter({ max, windowMs, maxKeys = 10_000, overflowBuckets = 1024, overflowFactor = 4, now = Date.now, }) {
     if (!(max > 0) || !(windowMs > 0))
         throw new Error("Limiteur : max et windowMs doivent être positifs");
+    if (!(maxKeys > 0) || !(overflowBuckets > 0) || !(overflowFactor > 0))
+        throw new Error("Limiteur : réglages de mémoire invalides");
     const entries = new Map();
-    // Compteur commun des clés nouvelles quand la Map est pleine de clés actives
-    let overflow;
+    // Clés suivies dont le compteur est à 0 : évincées en premier, sans parcourir la Map
+    const zeroKeys = new Set();
+    // Compartiments de débordement, créés à la demande
+    const buckets = new Map();
+    const overflowLimit = Math.max(max, Math.floor(max * overflowFactor));
+    const forget = (key) => {
+        entries.delete(key);
+        zeroKeys.delete(key);
+    };
+    const setCount = (key, entry, count) => {
+        entry.count = count;
+        if (count === 0)
+            zeroKeys.add(key);
+        else
+            zeroKeys.delete(key);
+    };
     const current = (key, time) => {
         const entry = entries.get(key);
         if (entry && entry.resetAt <= time) {
-            entries.delete(key);
+            forget(key);
             return undefined;
         }
         return entry;
-    };
-    const currentOverflow = (time) => {
-        if (overflow && overflow.resetAt <= time)
-            overflow = undefined;
-        return overflow;
-    };
-    const status = (count, resetAt, time) => {
-        const allowed = count < max;
-        return { allowed, remaining: Math.max(0, max - count), retryAfterMs: allowed ? 0 : resetAt - time };
     };
     // Les clés sont ajoutées dans l'ordre de leur échéance (même fenêtre pour toutes) : on s'arrête à la première
     // encore active, donc le coût ne dépend que du nombre de clés expirées, même sous une inondation de clés neuves.
@@ -54,52 +54,95 @@ export function createAttemptLimiter({ max, windowMs, maxKeys = 10_000, now = Da
         for (const [key, entry] of entries) {
             if (entry.resetAt > time)
                 break;
-            entries.delete(key);
+            forget(key);
         }
     };
-    /** Le compteur de la clé : le sien, un neuf s'il reste de la place, sinon le compteur de débordement commun. */
+    /** Fait de la place si possible (expirées, puis une clé à 0). Renvoie `false` si la Map reste pleine. */
+    const makeRoom = (time, evict) => {
+        if (entries.size < maxKeys)
+            return true;
+        prune(time);
+        if (entries.size < maxKeys)
+            return true;
+        const zero = zeroKeys.values().next();
+        if (zero.done)
+            return false;
+        if (evict)
+            forget(zero.value);
+        return true;
+    };
+    const bucketFor = (key, time, create) => {
+        const index = fnv1a(key) % overflowBuckets;
+        let bucket = buckets.get(index);
+        if (bucket && bucket.resetAt <= time) {
+            buckets.delete(index);
+            bucket = undefined;
+        }
+        if (!bucket && create) {
+            bucket = { count: 0, resetAt: time + windowMs, limit: overflowLimit };
+            buckets.set(index, bucket);
+        }
+        return bucket;
+    };
+    /** Le compteur de la clé : le sien, un neuf s'il y a (ou s'il se fait) de la place, sinon son compartiment de débordement. */
     const entryFor = (key, time) => {
         const existing = current(key, time);
         if (existing)
-            return existing;
-        if (entries.size >= maxKeys)
-            prune(time);
-        if (entries.size >= maxKeys) {
-            overflow = currentOverflow(time) ?? { count: 0, resetAt: time + windowMs };
-            return overflow;
+            return { counter: existing, own: true };
+        if (makeRoom(time, true)) {
+            const entry = { count: 0, resetAt: time + windowMs, limit: max };
+            entries.set(key, entry);
+            zeroKeys.add(key);
+            return { counter: entry, own: true };
         }
-        const entry = { count: 0, resetAt: time + windowMs };
-        entries.set(key, entry);
-        return entry;
+        return { counter: bucketFor(key, time, true), own: false };
+    };
+    const status = (count, limit, resetAt, time) => {
+        const allowed = count < limit;
+        return { allowed, remaining: Math.max(0, limit - count), retryAfterMs: allowed ? 0 : resetAt - time };
+    };
+    const peek = (key) => {
+        const time = now();
+        const existing = current(key, time);
+        if (existing)
+            return status(existing.count, existing.limit, existing.resetAt, time);
+        if (makeRoom(time, false))
+            return status(0, max, time + windowMs, time);
+        const bucket = bucketFor(key, time, false);
+        return bucket ? status(bucket.count, bucket.limit, bucket.resetAt, time) : status(0, overflowLimit, time + windowMs, time);
     };
     return {
         attempt(key) {
             const time = now();
-            const entry = entryFor(key, time);
-            if (entry.count >= max)
-                return { allowed: false, remaining: 0, retryAfterMs: entry.resetAt - time };
-            entry.count++;
-            return { allowed: true, remaining: max - entry.count, retryAfterMs: 0 };
+            const { counter, own } = entryFor(key, time);
+            if (counter.count >= counter.limit)
+                return { allowed: false, remaining: 0, retryAfterMs: counter.resetAt - time };
+            if (own)
+                setCount(key, counter, counter.count + 1);
+            else
+                counter.count++;
+            return { allowed: true, remaining: counter.limit - counter.count, retryAfterMs: 0 };
         },
         succeed(key) {
-            // Seul le compteur propre de la clé est remboursé : le débordement commun ne l'est jamais (échec fermé)
+            // Seul le compteur propre de la clé est remboursé : le débordement ne l'est jamais (échec fermé)
             const entry = current(key, now());
             if (entry && entry.count > 0)
-                entry.count--;
+                setCount(key, entry, entry.count - 1);
         },
         reset(key) {
-            entries.delete(key);
+            forget(key);
         },
-        check(key) {
-            const time = now();
-            const entry = current(key, time) ?? (entries.size >= maxKeys ? currentOverflow(time) : undefined);
-            return entry ? status(entry.count, entry.resetAt, time) : status(0, time + windowMs, time);
-        },
+        peek,
+        size: () => entries.size,
+        check: peek,
         fail(key) {
             const time = now();
-            const entry = entryFor(key, time);
-            entry.count++;
-            return status(entry.count, entry.resetAt, time);
+            const { counter, own } = entryFor(key, time);
+            if (own)
+                setCount(key, counter, counter.count + 1);
+            else
+                counter.count++;
+            return status(counter.count, counter.limit, counter.resetAt, time);
         },
     };
 }

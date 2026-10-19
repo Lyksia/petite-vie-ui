@@ -3,7 +3,7 @@ export { CODE_ALPHABET, CODE_LENGTH, formatCode, normalizeCode } from "../code-f
 export { SECRET_QUESTION_IDS, SECRET_QUESTIONS, getSecretQuestion, type SecretQuestion, type SecretQuestionId } from "../questions.js";
 export { hashAnswer, verifyAnswer } from "./answer.js";
 export { generateCode, hashCode } from "./code.js";
-export { RECOVERY_ANSWER_LIMIT, SIGN_IN_LIMITS, createAttemptLimiter, type AttemptLimiter, type AttemptLimiterOptions, type AttemptStatus, } from "./rate-limit.js";
+export { RECOVERY_ANSWER_LIMIT, SIGN_IN_LIMITS, createAttemptLimiter, type AttemptLimiter, type AttemptLimiterOptions, type MemoryAttemptLimiter, type AttemptStatus, } from "./rate-limit.js";
 export { SIGN_IN_GUARD, createSignInGuard, limiterKeyForIp, limiterKeyForIp48, type SignInGuard, type SignInGuardSettings } from "./sign-in-guard.js";
 export { accountCodeSchema, createAccountBodySchema, oneTimeTokenSchema, recoveryAnswerBodySchema, recoveryRequestBodySchema, secretAnswerSchema, signInBodySchema, transferBodySchema, type CreateAccountBody, type RecoveryAnswerBody, type RecoveryRequestBody, type SignInBody, type TransferBody, } from "./schemas.js";
 export { RECOVERY_TOKEN_TTL_MS, TRANSFER_TOKEN_TTL_MS, createOneTimeToken, hashToken, isTokenUsable, type OneTimeToken, } from "./token.js";

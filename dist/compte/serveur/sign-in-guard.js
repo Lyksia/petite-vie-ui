@@ -71,28 +71,29 @@ export function createSignInGuard({ settings = SIGN_IN_GUARD, onAttack, now = Da
     return {
         attempt(ip) {
             const key = limiterKeyForIp(ip);
-            const strict = cautious();
-            // Le compteur normal compte toujours : à la fin du mode prudence, on ne repart pas de zéro
-            const status = normal.attempt(key);
-            if (!status.allowed)
-                return { ...status, cautious: strict };
             const wide = limiterKeyForIp48(ip);
+            const strict = cautious();
+            // 1. Vérifier tous les plafonds SANS rien créer ni compter : un refus ne laisse aucune entrée à 0
+            //    (sinon une inondation remplirait les compteurs à vide). Tout est synchrone : pas de TOCTOU.
+            const perAddress = normal.peek(key);
+            if (!perAddress.allowed)
+                return { ...perAddress, cautious: strict };
             if (wide) {
-                const block = block48.attempt(wide);
-                if (!block.allowed) {
-                    normal.succeed(key);
+                const block = block48.peek(wide);
+                if (!block.allowed)
                     return { ...block, cautious: strict };
-                }
             }
             if (strict) {
-                const tight = careful.attempt(key);
-                if (!tight.allowed) {
-                    normal.succeed(key);
-                    if (wide)
-                        block48.succeed(wide);
+                const tight = careful.peek(key);
+                if (!tight.allowed)
                     return { ...tight, cautious: true };
-                }
             }
+            // 2. Tout passe : compter partout. Le compteur normal compte toujours (pas de remise à zéro en fin de prudence).
+            const status = normal.attempt(key);
+            if (wide)
+                block48.attempt(wide);
+            if (strict)
+                careful.attempt(key);
             return { ...status, cautious: strict };
         },
         succeed(ip) {
@@ -111,5 +112,6 @@ export function createSignInGuard({ settings = SIGN_IN_GUARD, onAttack, now = Da
             }
         },
         cautious,
+        trackedKeys: () => ({ perIp: normal.size(), perIp48: block48.size(), cautious: careful.size() }),
     };
 }
