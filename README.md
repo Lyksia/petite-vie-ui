@@ -11,7 +11,7 @@ Extrait de Parent Life (v1) sans rien y changer. Chaque jeu choisit la version q
 Dépendance git épinglée sur un tag (pas de build : CSS et TSX source, transpilés par Next) :
 
 ```bash
-pnpm add github:Lyksia/petite-vie-ui#v0.2.0
+pnpm add github:Lyksia/petite-vie-ui#v0.2.1
 ```
 
 `next.config.ts` :
@@ -155,7 +155,7 @@ app.post("/compte/connexion", async (c) => {
   const { code } = signInBodySchema.parse(await c.req.json());
   const account = await db.account.findUnique({ where: { codeHash: hashCode(code, PEPPER) } });
   if (!account) return c.json({ error: "inconnu" }, 404); // l'essai est déjà compté
-  perIp.reset(ip);            // réussite : l'IP repart de zéro
+  perIp.succeed(ip);          // réussite : rembourse cet essai seulement, les ratés restent comptés
   everyone.succeed("global"); // et ne pèse pas sur le compteur global
   // … ouvrir la session du jeu
 });
@@ -172,7 +172,7 @@ Fonctions :
 | `hashAnswer(réponse)` / `verifyAnswer(réponse, stockée)` | scrypt (N=16384, r=8, p=1, sel 16 octets) ; comparaison à temps constant. Format `scrypt$N$r$p$sel$empreinte`. |
 | `createOneTimeToken(ttlMs, now?)` | `{ token, tokenHash, expiresAt }` : 32 octets aléatoires en base64url ; seul `tokenHash` va en base. |
 | `hashToken(token)` / `isTokenUsable({ expiresAt, usedAt }, now?)` | Retrouver un jeton par empreinte ; vérifier qu'il n'a ni servi ni expiré. |
-| `createAttemptLimiter({ max, windowMs })` | Limiteur d'essais en mémoire. **`attempt(key)`** compte l'essai de façon atomique et dit s'il passe ; `reset(key)` / `succeed(key)` effacent ou remboursent après une réussite. `check`/`fail` sont dépréciés (faille TOCTOU, voir plus bas). Interface `AttemptLimiter` remplaçable (Redis `INCR`, base), à condition que `attempt` reste atomique. |
+| `createAttemptLimiter({ max, windowMs })` | Limiteur d'essais en mémoire. **`attempt(key)`** compte l'essai de façon atomique et dit s'il passe ; `succeed(key)` rembourse l'essai réussi ; `reset(key)` efface tout (admin, tests), jamais après une réussite. `check`/`fail` sont dépréciés (faille TOCTOU, voir plus bas). Interface `AttemptLimiter` remplaçable (Redis `INCR`, base), à condition que `attempt` reste atomique. |
 | `SECRET_QUESTIONS`, `SECRET_QUESTION_IDS`, `getSecretQuestion(id)` | Les 7 questions communes. Ne jamais retirer ni renommer un `id`. |
 | Schémas zod | `createAccountBodySchema`, `signInBodySchema`, `recoveryRequestBodySchema`, `recoveryAnswerBodySchema`, `transferBodySchema`, et les briques `accountCodeSchema`, `secretAnswerSchema`, `oneTimeTokenSchema`. |
 
@@ -258,7 +258,7 @@ model OneTimeToken {
 
 - **Rien de clair en base** : ni code (`hashCode`), ni réponse (`hashAnswer`), ni jeton (`hashToken`). Le code clair n'est renvoyé qu'à la création et à la récupération.
 - **Poivre conseillé** : avec 887 millions de codes, un sha256 nu se retrouve vite si la base fuite. `hashCode(code, process.env.ACCOUNT_CODE_PEPPER)` l'empêche ; le poivre ne doit jamais changer (sinon plus aucun code ne se retrouve).
-- **Compter avant de chercher** : `attempt()` (5 essais / 15 min par IP + un compteur global) avant tout `await`, puis `reset`/`succeed` en cas de réussite. Jamais `check()` → recherche async → `fail()` : N requêtes simultanées passeraient toutes le `check` avant le moindre `fail` (TOCTOU), c'est pourquoi `check`/`fail` sont dépréciés. Le limiteur fourni vit en mémoire d'un seul processus ; une API sur plusieurs instances le remplace par une implémentation partagée et atomique de l'interface `AttemptLimiter`.
+- **Compter avant de chercher** : `attempt()` (5 essais / 15 min par IP + un compteur global) avant tout `await`, puis `succeed` en cas de réussite (jamais `reset` : avec son propre code valide, un attaquant effacerait ses faux essais entre deux connexions et devinerait sans fin). Jamais `check()` → recherche async → `fail()` : N requêtes simultanées passeraient toutes le `check` avant le moindre `fail` (TOCTOU), c'est pourquoi `check`/`fail` sont dépréciés. Le limiteur fourni vit en mémoire d'un seul processus ; une API sur plusieurs instances le remplace par une implémentation partagée et atomique de l'interface `AttemptLimiter`.
 - **Même réponse pour « code inconnu »** quelle que soit la cause, et pas de route qui dise si un code existe sans compter l'essai.
 - **Jetons** : 32 octets aléatoires, usage unique (`usedAt` posé dans la même transaction que l'action), 24 h pour la récupération, 15 min pour le transfert. Ne jamais les journaliser.
 - **Question secrète** : 3 essais par lien, comptés en base par une mise à jour conditionnelle **avant** `verifyAnswer`, puis blocage ; la vérification est lente (scrypt) et à temps constant.

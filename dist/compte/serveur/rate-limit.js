@@ -13,7 +13,7 @@ export const RECOVERY_ANSWER_LIMIT = { max: 3, windowMs: 24 * 60 * 60 * 1000 };
  * ```ts
  * if (!perIp.attempt(ip).allowed || !everyone.attempt("global").allowed) return c.json({ error: "trop-d-essais" }, 429);
  * const account = await findAccount(code); // l'essai est déjà compté
- * if (account) { perIp.reset(ip); everyone.succeed("global"); }
+ * if (account) { perIp.succeed(ip); everyone.succeed("global"); } // rembourse cet essai, les ratés restent comptés
  * ```
  */
 export function createAttemptLimiter({ max, windowMs, maxKeys = 10_000, now = Date.now }) {

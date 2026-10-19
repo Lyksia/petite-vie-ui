@@ -9,7 +9,8 @@ export type AttemptStatus = {
 /**
  * Ce que l'API attend d'un limiteur : l'implémentation en mémoire ci-dessous, ou une autre (Redis, base…).
  *
- * Seul usage sûr : `attempt(key)` AVANT tout `await`, puis `reset(key)` ou `succeed(key)` en cas de réussite.
+ * Seul usage sûr : `attempt(key)` AVANT tout `await`, puis `succeed(key)` en cas de réussite (rembourse cet essai seulement).
+ * Ne jamais `reset` une clé après une réussite : avec son propre code valide, on effacerait ses faux essais et on devinerait sans fin.
  * Une autre implémentation doit garder `attempt` atomique (ex. `INCR` Redis, `UPDATE … RETURNING` en base).
  */
 export type AttemptLimiter = {
@@ -20,7 +21,10 @@ export type AttemptLimiter = {
   attempt(key: string): AttemptStatus;
   /** Rembourse un essai accordé par `attempt` (réussite qui ne doit pas peser, ex. sur le compteur global). */
   succeed(key: string): void;
-  /** Efface le compteur d'une clé (après une réussite, pour l'IP par exemple). */
+  /**
+   * Efface tout le compteur d'une clé (outil d'admin, tests).
+   * Jamais après une réussite : les faux essais de la même clé seraient effacés avec (contournement de la limite).
+   */
   reset(key: string): void;
   /**
    * État d'une clé sans rien compter.
@@ -63,7 +67,7 @@ export const RECOVERY_ANSWER_LIMIT = { max: 3, windowMs: 24 * 60 * 60 * 1000 } a
  * ```ts
  * if (!perIp.attempt(ip).allowed || !everyone.attempt("global").allowed) return c.json({ error: "trop-d-essais" }, 429);
  * const account = await findAccount(code); // l'essai est déjà compté
- * if (account) { perIp.reset(ip); everyone.succeed("global"); }
+ * if (account) { perIp.succeed(ip); everyone.succeed("global"); } // rembourse cet essai, les ratés restent comptés
  * ```
  */
 export function createAttemptLimiter({ max, windowMs, maxKeys = 10_000, now = Date.now }: AttemptLimiterOptions): AttemptLimiter {

@@ -83,4 +83,17 @@ describe("createAttemptLimiter", () => {
   it("refuse des réglages absurdes", () => {
     expect(() => createAttemptLimiter({ max: 0, windowMs: 1000 })).toThrow();
   });
+
+  it("une connexion réussie n'efface pas les faux essais (succeed rembourse un seul essai)", () => {
+    const limiter = createAttemptLimiter({ max: 5, windowMs: 15 * 60 * 1000, now: () => 0 });
+    // L'attaquant alterne : un faux code, puis son propre code valide
+    let guesses = 0;
+    for (let round = 0; round < 20; round++) {
+      if (!limiter.attempt("ip").allowed) break;
+      guesses++;
+      if (!limiter.attempt("ip").allowed) break;
+      limiter.succeed("ip");
+    }
+    expect(guesses).toBe(5);
+  });
 });
