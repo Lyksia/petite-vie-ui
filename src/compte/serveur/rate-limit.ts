@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 export type AttemptStatus = {
   /** `attempt` : `true` si cet essai entre dans la limite. `check`/`fail` : `true` s'il reste des essais. */
   allowed: boolean;
@@ -110,9 +111,12 @@ export type MemoryAttemptLimiter = AttemptLimiter & {
 
 type Counter = { count: number; resetAt: number; limit: number };
 
-/** Empreinte FNV-1a 32 bits d'une chaîne (rapide, non cryptographique : sert seulement à répartir). */
-function fnv1a(text: string): number {
-  let hash = 0x811c9dc5;
+/**
+ * Empreinte FNV-1a 32 bits d'une chaîne, salée par une graine tirée au hasard à la création du limiteur :
+ * sert seulement à répartir, mais un attaquant ne peut pas viser un compartiment précis.
+ */
+function fnv1a(text: string, seed: number): number {
+  let hash = (0x811c9dc5 ^ seed) >>> 0;
   for (let index = 0; index < text.length; index++) {
     hash ^= text.charCodeAt(index);
     hash = Math.imul(hash, 0x01000193);
@@ -136,6 +140,8 @@ export function createAttemptLimiter({
   // Compartiments de débordement, créés à la demande
   const buckets = new Map<number, Counter>();
   const overflowLimit = Math.max(max, Math.floor(max * overflowFactor));
+  // Graine secrète, propre à ce limiteur : la répartition des clés dans les compartiments est imprévisible
+  const seed = randomInt(0, 2 ** 32);
 
   const forget = (key: string) => {
     entries.delete(key);
@@ -178,7 +184,7 @@ export function createAttemptLimiter({
   };
 
   const bucketFor = (key: string, time: number, create: boolean): Counter | undefined => {
-    const index = fnv1a(key) % overflowBuckets;
+    const index = fnv1a(key, seed) % overflowBuckets;
     let bucket = buckets.get(index);
     if (bucket && bucket.resetAt <= time) {
       buckets.delete(index);

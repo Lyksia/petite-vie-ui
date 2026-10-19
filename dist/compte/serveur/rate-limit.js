@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 /** Limites conseillées pour la connexion par code. */
 /**
  * @deprecated `global` bloquait tout le monde au-delà de 200 essais (déni de service à bas prix).
@@ -9,9 +10,12 @@ export const SIGN_IN_LIMITS = {
 };
 /** Limite conseillée pour la réponse à la question de récupération : 3 essais, puis blocage 24 h. */
 export const RECOVERY_ANSWER_LIMIT = { max: 3, windowMs: 24 * 60 * 60 * 1000 };
-/** Empreinte FNV-1a 32 bits d'une chaîne (rapide, non cryptographique : sert seulement à répartir). */
-function fnv1a(text) {
-    let hash = 0x811c9dc5;
+/**
+ * Empreinte FNV-1a 32 bits d'une chaîne, salée par une graine tirée au hasard à la création du limiteur :
+ * sert seulement à répartir, mais un attaquant ne peut pas viser un compartiment précis.
+ */
+function fnv1a(text, seed) {
+    let hash = (0x811c9dc5 ^ seed) >>> 0;
     for (let index = 0; index < text.length; index++) {
         hash ^= text.charCodeAt(index);
         hash = Math.imul(hash, 0x01000193);
@@ -29,6 +33,8 @@ export function createAttemptLimiter({ max, windowMs, maxKeys = 10_000, overflow
     // Compartiments de débordement, créés à la demande
     const buckets = new Map();
     const overflowLimit = Math.max(max, Math.floor(max * overflowFactor));
+    // Graine secrète, propre à ce limiteur : la répartition des clés dans les compartiments est imprévisible
+    const seed = randomInt(0, 2 ** 32);
     const forget = (key) => {
         entries.delete(key);
         zeroKeys.delete(key);
@@ -72,7 +78,7 @@ export function createAttemptLimiter({ max, windowMs, maxKeys = 10_000, overflow
         return true;
     };
     const bucketFor = (key, time, create) => {
-        const index = fnv1a(key) % overflowBuckets;
+        const index = fnv1a(key, seed) % overflowBuckets;
         let bucket = buckets.get(index);
         if (bucket && bucket.resetAt <= time) {
             buckets.delete(index);

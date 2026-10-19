@@ -64,7 +64,8 @@ export function createSignInGuard({ settings = SIGN_IN_GUARD, onAttack, now = Da
     const { maxKeys } = settings;
     const normal = createAttemptLimiter({ ...settings.perIp, maxKeys, now });
     const block48 = createAttemptLimiter({ ...settings.perIp48, maxKeys, now });
-    const careful = createAttemptLimiter({ ...settings.perIpCautious, maxKeys, now });
+    // En mode prudence, même le débordement reste à 1 essai par fenêtre : pas d'élargissement
+    const careful = createAttemptLimiter({ ...settings.perIpCautious, maxKeys, overflowFactor: 1, now });
     const failures = createMinuteCounter(settings.attack.windowMs, now);
     let cautiousUntil = 0;
     const cautious = () => now() < cautiousUntil;
