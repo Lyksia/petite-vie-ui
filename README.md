@@ -11,7 +11,7 @@ Extrait de Parent Life (v1) sans rien y changer. Chaque jeu choisit la version q
 Dépendance git épinglée sur un tag (pas de build : CSS et TSX source, transpilés par Next) :
 
 ```bash
-pnpm add github:Lyksia/petite-vie-ui#v0.2.2
+pnpm add github:Lyksia/petite-vie-ui#v0.2.3
 ```
 
 `next.config.ts` :
@@ -132,12 +132,13 @@ import {
   createAccountBodySchema, signInBodySchema, recoveryRequestBodySchema, recoveryAnswerBodySchema, transferBodySchema,
   generateCode, hashCode, hashAnswer, verifyAnswer,
   createOneTimeToken, hashToken, isTokenUsable, RECOVERY_TOKEN_TTL_MS, TRANSFER_TOKEN_TTL_MS,
-  createAttemptLimiter, SIGN_IN_LIMITS, RECOVERY_ANSWER_LIMIT,
+  createSignInGuard, RECOVERY_ANSWER_LIMIT,
 } from "@petite-vie/ui/compte/serveur";
 
 const PEPPER = process.env.ACCOUNT_CODE_PEPPER; // secret de l'API, jamais en base
-const perIp = createAttemptLimiter(SIGN_IN_LIMITS.perIp);     // 5 essais / 15 min par IP
-const everyone = createAttemptLimiter(SIGN_IN_LIMITS.global); // garde-fou contre les essais venus de partout
+// 5 essais / 15 min par adresse (IPv6 regroupées par /64) ; au-delà de 300 ratés en 15 min toutes adresses confondues,
+// « mode prudence » : 1 essai / 15 min par adresse et alerte. Jamais de blocage général (déni de service).
+const guard = createSignInGuard({ onAttack: (n) => alertAdmin(`${n} codes faux en 15 min`) });
 
 // Création
 app.post("/compte", async (c) => {
@@ -151,12 +152,11 @@ app.post("/compte", async (c) => {
 app.post("/compte/connexion", async (c) => {
   const ip = clientIp(c);
   // attempt() compte l'essai TOUT DE SUITE, avant le moindre await : des requêtes simultanées ne passent pas toutes.
-  if (!perIp.attempt(ip).allowed || !everyone.attempt("global").allowed) return c.json({ error: "trop-d-essais" }, 429);
+  if (!guard.attempt(ip).allowed) return c.json({ error: "trop-d-essais" }, 429);
   const { code } = signInBodySchema.parse(await c.req.json());
   const account = await db.account.findUnique({ where: { codeHash: hashCode(code, PEPPER) } });
-  if (!account) return c.json({ error: "inconnu" }, 404); // l'essai est déjà compté
-  perIp.succeed(ip);          // réussite : rembourse cet essai seulement, les ratés restent comptés
-  everyone.succeed("global"); // et ne pèse pas sur le compteur global
+  if (!account) { guard.failed(); return c.json({ error: "inconnu" }, 404); } // l'essai est déjà compté
+  guard.succeed(ip); // réussite : rembourse cet essai seulement, les ratés restent comptés
   // … ouvrir la session du jeu
 });
 ```

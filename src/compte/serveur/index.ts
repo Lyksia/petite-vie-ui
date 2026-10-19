@@ -12,6 +12,7 @@ export {
   type AttemptLimiterOptions,
   type AttemptStatus,
 } from "./rate-limit.js";
+export { SIGN_IN_GUARD, createSignInGuard, limiterKeyForIp, type SignInGuard } from "./sign-in-guard.js";
 export {
   accountCodeSchema,
   createAccountBodySchema,

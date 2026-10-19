@@ -5,5 +5,6 @@ export { SECRET_QUESTION_IDS, SECRET_QUESTIONS, getSecretQuestion } from "../que
 export { hashAnswer, verifyAnswer } from "./answer.js";
 export { generateCode, hashCode } from "./code.js";
 export { RECOVERY_ANSWER_LIMIT, SIGN_IN_LIMITS, createAttemptLimiter, } from "./rate-limit.js";
+export { SIGN_IN_GUARD, createSignInGuard, limiterKeyForIp } from "./sign-in-guard.js";
 export { accountCodeSchema, createAccountBodySchema, oneTimeTokenSchema, recoveryAnswerBodySchema, recoveryRequestBodySchema, secretAnswerSchema, signInBodySchema, transferBodySchema, } from "./schemas.js";
 export { RECOVERY_TOKEN_TTL_MS, TRANSFER_TOKEN_TTL_MS, createOneTimeToken, hashToken, isTokenUsable, } from "./token.js";

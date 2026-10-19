@@ -48,6 +48,10 @@ export type AttemptLimiterOptions = {
     now?: () => number;
 };
 /** Limites conseillées pour la connexion par code. */
+/**
+ * @deprecated `global` bloquait tout le monde au-delà de 200 essais (déni de service à bas prix).
+ * Utiliser `createSignInGuard` (mode prudence au lieu d'un blocage général).
+ */
 export declare const SIGN_IN_LIMITS: {
     readonly perIp: {
         readonly max: 5;
