@@ -11,7 +11,7 @@ Extrait de Parent Life (v1) sans rien y changer. Chaque jeu choisit la version q
 Dépendance git épinglée sur un tag (pas de build : CSS et TSX source, transpilés par Next) :
 
 ```bash
-pnpm add github:Lyksia/petite-vie-ui#v0.2.1
+pnpm add github:Lyksia/petite-vie-ui#v0.2.2
 ```
 
 `next.config.ts` :
@@ -125,7 +125,7 @@ Le kit ajoute `TextAreaField` aux composants communs, et `TextField` accepte dé
 ### Côté API : `@petite-vie/ui/compte/serveur`
 
 Logique pure Node (`node:crypto`, sans React ni Next), **livrée compilée** dans `dist/` : elle s'importe depuis une API Hono compilée par `tsc` et lancée par `node`.
-Les schémas demandent `zod` (v4), en dépendance facultative : les API l'ont déjà.
+Les schémas demandent `zod` (v4), en dépendance facultative : les API l'ont déjà. Toutes les dépendances « pairs » du kit (next, react, lucide-react, tailwindcss, zod) sont facultatives : une API n'installe rien de React ou de Next.
 
 ```ts
 import {
