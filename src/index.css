@@ -7,3 +7,4 @@
 
 /* Les classes des composants du kit doivent être générées chez le consommateur */
 @source "./components";
+@source "./compte";
