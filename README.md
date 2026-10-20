@@ -11,7 +11,7 @@ Extrait de Parent Life (v1) sans rien y changer. Chaque jeu choisit la version q
 Dépendance git épinglée sur un tag (pas de build : CSS et TSX source, transpilés par Next) :
 
 ```bash
-pnpm add github:Lyksia/petite-vie-ui#v0.4.5
+pnpm add github:Lyksia/petite-vie-ui#v0.5.0
 ```
 
 `next.config.ts` :
@@ -269,6 +269,38 @@ model OneTimeToken {
 - **Question secrète** : 3 essais par lien, comptés en base par une mise à jour conditionnelle **avant** `verifyAnswer`, puis blocage ; la vérification est lente (scrypt) et à temps constant.
 - **E-mail** : utilisé une seule fois, effacé dès l'envoi du lien (ou le refus). Ne pas le journaliser.
 - **Côté appareil** : le jeu garde le code dans son stockage local pour l'afficher dans `AccountCodeCard` ; il ne le met jamais dans une URL.
+
+## Réglages
+
+**Un seul écran Réglages pour les trois jeux** (`@petite-vie/ui/reglages`) : même roue d'ouverture, même ordre, mêmes libellés.
+Le jeu ne fournit que ses données et ses actions.
+
+Ordre : **Ton compte · Notifications · Ta partie** (réglages propres au jeu, facultatif) **· Ta sauvegarde · À propos · Recommencer de zéro.**
+
+```tsx
+import { SettingsButton, SettingsScreen } from "@petite-vie/ui/reglages";
+
+// En haut à droite de chaque onglet ; un nouvel appui ramène au jeu.
+<SettingsButton open={tab === "reglages"} onClick={() => setTab(tab === "reglages" ? "jour" : "reglages")} />
+
+<SettingsScreen
+  gameName="Pet Life"
+  subjectName={companion.name}
+  account={connected ? { status: "connected", code, onSignOut, syncLine } : { status: "signed-out", onCreate, onSignIn }}
+  notifications={{ support, enabled, busy, error, onEnable, onDisable }}
+  save={{ exportText, fileName, parse, placeholder: "PETLIFE1.…" }}
+  restart={{ text: `${companion.name} retournera à l'animalerie.`, onConfirm: restart }}
+  game={<ParentField />} // facultatif
+  version="1.0.0"
+/>
+```
+
+- `account` : `connected` (code ou `null` s'il n'est pas gardé ici, déconnexion confirmée par le kit, ligne d'état de la sauvegarde
+  en ligne), `signed-out` (« Créer mon compte » / « J'ai déjà un code »), ou `unavailable` (pas d'API : section cachée).
+- `notifications` : obligatoires dans les trois jeux. `support` = `ok`, `install-first` (iPhone : ajouter à l'écran d'accueil)
+  ou `unsupported`.
+- `save.parse(text)` rend `{ error }` ou `{ name, apply }` : le kit demande « Récupérer {name} ? » avant d'appeler `apply`.
+- La confirmation « Recommencer de zéro ? » est faite par le kit avec `restart.text`.
 
 ## Accès admin
 
