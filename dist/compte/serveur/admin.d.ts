@@ -49,7 +49,7 @@ export type AdminGuard = {
 export declare function generateAdminCode(): string;
 /** Empreinte scrypt d'un code admin, à mettre dans `ADMIN_CODE_HASH`. Lève une erreur si ce ne sont pas 8 chiffres. */
 export declare function hashAdminCode(code: string): Promise<string>;
-/** Compare un code admin saisi à son empreinte, à temps constant. */
+/** Compare un code admin saisi à son empreinte (forme à points ou à `$`), à temps constant. */
 export declare function verifyAdminCode(code: string, stored: string): Promise<boolean>;
 /**
  * Accès à l'interface admin par code à 8 chiffres, commun aux trois jeux.

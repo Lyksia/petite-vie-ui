@@ -11,7 +11,7 @@ Extrait de Parent Life (v1) sans rien y changer. Chaque jeu choisit la version q
 Dépendance git épinglée sur un tag (pas de build : CSS et TSX source, transpilés par Next) :
 
 ```bash
-pnpm add github:Lyksia/petite-vie-ui#v0.4.0
+pnpm add github:Lyksia/petite-vie-ui#v0.4.1
 ```
 
 `next.config.ts` :
@@ -286,6 +286,8 @@ La commande affiche le code et deux variables, à mettre dans `.env.local` (et d
 
 - `ADMIN_CODE_HASH` : l'empreinte du code. **La même dans les trois jeux** pour n'avoir qu'un code à retenir.
 - `ADMIN_SESSION_SECRET` : **propre à chaque jeu** (relancer la commande pour chacun) : une session ouverte dans un jeu n'ouvre pas les autres.
+
+L'empreinte s'écrit avec des points (`scrypt.16384.8.1.…`), sans `$` : Next lit `.env*` avec dotenv-expand, qui prendrait chaque `$` pour une variable (empreinte tronquée, admin fermé). Une ancienne empreinte à `$` reste acceptée si les `$` sont échappés.
 
 Changer de code = relancer la commande et remplacer `ADMIN_CODE_HASH` : toutes les sessions ouvertes se ferment.
 

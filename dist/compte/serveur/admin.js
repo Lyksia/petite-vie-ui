@@ -22,19 +22,26 @@ export const ADMIN_GUARD = {
 export function generateAdminCode() {
     return Array.from({ length: ADMIN_CODE_LENGTH }, () => randomInt(0, 10)).join("");
 }
+/**
+ * L'empreinte d'un code admin s'écrit avec des points (`scrypt.N.r.p.sel.empreinte`) et non des `$` :
+ * Next lit `.env*` avec dotenv-expand, qui prend chaque `$` pour une variable, même entre apostrophes.
+ * Le sel et l'empreinte sont en base64url, sans point possible. La forme à `$` reste acceptée.
+ */
+const toEnvForm = (stored) => stored.split("$").join(".");
+const fromEnvForm = (stored) => stored.trim().split(".").join("$");
 /** Empreinte scrypt d'un code admin, à mettre dans `ADMIN_CODE_HASH`. Lève une erreur si ce ne sont pas 8 chiffres. */
 export async function hashAdminCode(code) {
     const normalized = normalizeAdminCode(code);
     if (!normalized)
         throw new Error("Code admin invalide : 8 chiffres attendus");
-    return scryptHash(normalized);
+    return toEnvForm(await scryptHash(normalized));
 }
-/** Compare un code admin saisi à son empreinte, à temps constant. */
+/** Compare un code admin saisi à son empreinte (forme à points ou à `$`), à temps constant. */
 export async function verifyAdminCode(code, stored) {
     const normalized = normalizeAdminCode(code);
     if (!normalized)
         return false;
-    return scryptVerify(normalized, stored);
+    return scryptVerify(normalized, fromEnvForm(stored));
 }
 const SESSION_PATTERN = /^v1\.(\d{1,15})\.([\w-]{43})$/;
 /**
@@ -50,13 +57,13 @@ const SESSION_PATTERN = /^v1\.(\d{1,15})\.([\w-]{43})$/;
  * a ses propres compteurs.
  */
 export function createAdminGuard({ codeHash, sessionSecret, settings = ADMIN_GUARD, now = Date.now, }) {
-    if (!codeHash.startsWith("scrypt$"))
+    if (!/^scrypt[.$]\d+[.$]\d+[.$]\d+[.$][\w-]+[.$][\w-]+$/.test(codeHash.trim()))
         throw new Error("ADMIN_CODE_HASH invalide : le générer avec `pnpm exec petite-vie-admin-code`");
     if (sessionSecret.length < 32)
         throw new Error("ADMIN_SESSION_SECRET trop court : 32 caractères au moins");
     const perIp = createAttemptLimiter({ ...settings.perIp, now });
     const everyone = createAttemptLimiter({ ...settings.global, now });
-    const sign = (expiresAt) => createHmac("sha256", sessionSecret).update(`petite-vie-admin:v1:${expiresAt}:${codeHash}`).digest("base64url");
+    const sign = (expiresAt) => createHmac("sha256", sessionSecret).update(`petite-vie-admin:v1:${expiresAt}:${fromEnvForm(codeHash)}`).digest("base64url");
     return {
         async signIn(code, ip) {
             const key = limiterKeyForIp(ip);

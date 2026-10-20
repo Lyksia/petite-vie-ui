@@ -31,6 +31,17 @@ describe("hashAdminCode / verifyAdminCode", () => {
     expect(await verifyAdminCode("12345678", "pas-une-empreinte")).toBe(false);
   });
 
+  it("écrit l'empreinte sans $ (lisible par Next dans .env), et accepte encore la forme à $", async () => {
+    const stored = await hashAdminCode("12345678");
+    expect(stored).not.toContain("$");
+    expect(stored).toMatch(/^scrypt\.16384\.8\.1\.[\w-]+\.[\w-]+$/);
+    expect(await verifyAdminCode("12345678", stored.split(".").join("$"))).toBe(true);
+    const guard = createAdminGuard({ codeHash: stored.split(".").join("$"), sessionSecret: SECRET });
+    const result = await guard.signIn("12345678", "1.2.3.4");
+    if (!result.ok) throw new Error("connexion attendue");
+    expect(createAdminGuard({ codeHash: stored, sessionSecret: SECRET }).verifySession(result.session)).toBe(true);
+  });
+
   it("refuse d'empreindre un code invalide", async () => {
     await expect(hashAdminCode("1234")).rejects.toThrow();
   });
@@ -46,7 +57,8 @@ describe("createAdminGuard", () => {
 
   it("refuse une configuration mal faite", () => {
     expect(() => createAdminGuard({ codeHash: "12345678", sessionSecret: SECRET })).toThrow(/ADMIN_CODE_HASH/);
-    expect(() => createAdminGuard({ codeHash: "scrypt$x", sessionSecret: "court" })).toThrow(/ADMIN_SESSION_SECRET/);
+    expect(() => createAdminGuard({ codeHash: "scrypt$1$1$1$a$b", sessionSecret: "court" })).toThrow(/ADMIN_SESSION_SECRET/);
+    expect(() => createAdminGuard({ codeHash: "scrypt6384-tronquee", sessionSecret: SECRET })).toThrow(/ADMIN_CODE_HASH/);
   });
 
   it("ouvre une session avec le bon code, valable 12 h", async () => {
