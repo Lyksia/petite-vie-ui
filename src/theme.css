@@ -10,6 +10,8 @@
   --color-corail: #ec6959;
   --color-corail-tranche: #c65142;
   --color-corail-pale: #f4c8b9;
+  /* Corail lisible pour du texte sur crème (contraste AA) : corail-tranche reste réservé aux icônes et aux reliefs */
+  --color-corail-texte: #a84236;
   --color-sauge: #5f6f42;
   --color-sauge-claire: #e6ebdc;
   --color-creme: #fff8ec;
