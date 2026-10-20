@@ -11,7 +11,7 @@ Extrait de Parent Life (v1) sans rien y changer. Chaque jeu choisit la version q
 Dépendance git épinglée sur un tag (pas de build : CSS et TSX source, transpilés par Next) :
 
 ```bash
-pnpm add github:Lyksia/petite-vie-ui#v0.5.1
+pnpm add github:Lyksia/petite-vie-ui#v0.5.2
 ```
 
 `next.config.ts` :
@@ -301,6 +301,7 @@ import { SettingsButton, SettingsScreen } from "@petite-vie/ui/reglages";
   ou `unsupported`.
 - `save.parse(text)` rend `{ error }` ou `{ name, apply }` : le kit demande « Récupérer {name} ? » avant d'appeler `apply`.
 - La confirmation « Recommencer de zéro ? » est faite par le kit avec `restart.text`.
+- Écran d'entrée (« J'ai déjà une partie », sans compte) : `<SaveTransferDialog importOnly save={{ parse, placeholder }} … />` n'affiche que « Récupérer ».
 
 ## Accès admin
 
