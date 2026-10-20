@@ -1,6 +1,6 @@
 # @petite-vie/ui
 
-La charte commune des jeux Petite Vie — **Parent Life** (v1), **My Life** (v2), **Pet Life** (v3) :
+La charte commune des jeux Petite Vie — **Parent Life** (v1), **Life Story** (v2), **Pet Life** (v3) :
 le thème **Tailwind v4** (couleurs, rayons, ombres, animations), les utilitaires (`fond-points`, `points-clairs`, `sans-barre`),
 les **composants d'interface** (boutons, fiches, fenêtres, champ de texte, icône dessinée) et les **icônes dessinées** communes.
 
