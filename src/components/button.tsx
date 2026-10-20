@@ -2,12 +2,15 @@ import type { ButtonHTMLAttributes } from "react";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
 
-/** Action principale : corail, libellé brun renforcé, contour brun et léger relief. Une seule par écran. */
+/**
+ * Action principale : corail, libellé brun renforcé, contour brun et léger relief. Une seule par écran.
+ * Libellé en 20 px gras : brun foncé sur corail fait 4,37:1, suffisant pour un grand texte (3:1), pas pour un petit.
+ */
 export function PrimaryButton({ className = "", type = "button", ...props }: ButtonProps) {
   return (
     <button
       type={type}
-      className={`min-h-14 rounded-bouton border-2 border-terre bg-corail px-5 font-bold text-terre-fonce shadow-relief transition active:translate-y-1 active:shadow-none disabled:border-corail-pale disabled:bg-corail-pale disabled:text-terre-douce disabled:shadow-none ${className}`}
+      className={`min-h-14 rounded-bouton border-2 border-terre bg-corail px-5 text-xl font-bold text-terre-fonce shadow-relief transition active:translate-y-1 active:shadow-none disabled:border-corail-pale disabled:bg-corail-pale disabled:text-terre-douce disabled:shadow-none ${className}`}
       {...props}
     />
   );
