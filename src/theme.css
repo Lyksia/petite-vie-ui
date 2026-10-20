@@ -16,7 +16,8 @@
   --color-sauge-claire: #e6ebdc;
   --color-creme: #fff8ec;
   --color-sable: #f0ddc4;
-  --color-terre-douce: #80685b;
+  /* Texte secondaire : contraste AA (4,5:1 au moins) sur crème, sable, sauge claire, corail pâle et toutes les bandes */
+  --color-terre-douce: #6b5548;
 
   /* Teintes des jauges : distinctes, mates, accordées à la palette */
   --color-abricot: #e3874f;
