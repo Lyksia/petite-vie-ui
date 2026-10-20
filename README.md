@@ -324,8 +324,8 @@ export async function isAdmin(): Promise<boolean> {
 // src/features/admin/enter.ts
 "use server";
 export async function enterAdmin(code: string): Promise<"ok" | "wrong-code" | "too-many-attempts"> {
-  const list = await headers();
-  const ip = list.get("x-real-ip") ?? list.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "inconnue";
+  // Seulement l'adresse posée par l'hébergeur (Vercel écrase x-real-ip) : jamais x-forwarded-for, que le client peut écrire
+  const ip = (await headers()).get("x-real-ip") ?? "inconnue";
   const result = await getAdminGuard().signIn(code, ip);
   if (!result.ok) return result.reason === "invalid-code" ? "wrong-code" : "too-many-attempts";
   (await cookies()).set(ADMIN_SESSION_COOKIE, result.session, {
