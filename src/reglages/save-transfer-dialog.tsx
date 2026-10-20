@@ -80,7 +80,7 @@ export function SaveTransferDialog({ gameName, subjectName, save, onPicked, onCl
       {mode === "emporter" ? (
         <>
           <p className="text-base">
-            Copie ce texte, puis colle-le dans {gameName} sur l&apos;autre appareil, avec « Récupérer ». {subjectName} y arrivera tel quel.
+            Copie ce texte, puis colle-le dans {gameName} sur l&apos;autre appareil, avec « Récupérer ». La partie y arrivera telle quelle, sans rien perdre.
           </p>
           <label htmlFor={fieldId} className="sr-only">
             Sauvegarde de {subjectName}
