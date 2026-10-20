@@ -11,7 +11,7 @@ Extrait de Parent Life (v1) sans rien y changer. Chaque jeu choisit la version q
 Dépendance git épinglée sur un tag (pas de build : CSS et TSX source, transpilés par Next) :
 
 ```bash
-pnpm add github:Lyksia/petite-vie-ui#v0.3.2
+pnpm add github:Lyksia/petite-vie-ui#v0.4.0
 ```
 
 `next.config.ts` :
@@ -269,6 +269,71 @@ model OneTimeToken {
 - **Question secrète** : 3 essais par lien, comptés en base par une mise à jour conditionnelle **avant** `verifyAnswer`, puis blocage ; la vérification est lente (scrypt) et à temps constant.
 - **E-mail** : utilisé une seule fois, effacé dès l'envoi du lien (ou le refus). Ne pas le journaliser.
 - **Côté appareil** : le jeu garde le code dans son stockage local pour l'afficher dans `AccountCodeCard` ; il ne le met jamais dans une URL.
+
+## Accès admin
+
+L'interface admin de chaque jeu s'ouvre avec **un code de 8 chiffres** (`1234 5678`), le même fonctionnement dans les trois jeux.
+Le code n'est écrit nulle part : la configuration du jeu n'en garde que l'empreinte scrypt.
+
+**Tirer le code** (depuis le dossier d'un jeu qui a installé le kit) :
+
+```bash
+pnpm exec petite-vie-admin-code            # code tiré au hasard
+pnpm exec petite-vie-admin-code 12345678   # ou un code choisi
+```
+
+La commande affiche le code et deux variables, à mettre dans `.env.local` (et dans les variables d'environnement en ligne) :
+
+- `ADMIN_CODE_HASH` : l'empreinte du code. **La même dans les trois jeux** pour n'avoir qu'un code à retenir.
+- `ADMIN_SESSION_SECRET` : **propre à chaque jeu** (relancer la commande pour chacun) : une session ouverte dans un jeu n'ouvre pas les autres.
+
+Changer de code = relancer la commande et remplacer `ADMIN_CODE_HASH` : toutes les sessions ouvertes se ferment.
+
+| Côté | Ce que fournit le kit |
+|---|---|
+| Écran (`@petite-vie/ui/compte`) | `AdminCodeGate({ gameName, onSubmit })` : saisie tolérante (`1234 5678`, `1234-5678`), clavier numérique. `onSubmit` reçoit le code normalisé ; lever `AccountFormError(ADMIN_MESSAGES.wrongCode)` ou `ADMIN_MESSAGES.tooManyAttempts` pour un refus. |
+| Serveur (`@petite-vie/ui/compte/serveur`) | `createAdminGuard({ codeHash, sessionSecret })` → `signIn(code, ip)` et `verifySession(cookie)`. `ADMIN_SESSION_COOKIE` (`petite-vie-admin`), `ADMIN_GUARD` (réglages), `hashAdminCode`, `verifyAdminCode`, `generateAdminCode`, `normalizeAdminCode`. |
+
+Limites : 5 essais / 15 min par adresse, et **20 essais / heure toutes adresses confondues** (avec 100 millions de codes, c'est ce
+plafond qui rend une attaque répartie sans espoir). Le prix : une attaque peut bloquer l'accès admin jusqu'à une heure ; les sessions
+déjà ouvertes et les joueurs ne sont pas touchés. Session : 12 h, jeton signé (HMAC) lié au code. Compteurs en mémoire, par processus.
+
+Branchement dans un jeu Next.js :
+
+```ts
+// src/features/admin/guard.ts
+import "server-only";
+import { createAdminGuard, type AdminGuard } from "@petite-vie/ui/compte/serveur";
+
+let guard: AdminGuard | undefined;
+/** Créé au premier usage (pas au build), une fois par processus : les compteurs d'essais y vivent. */
+export function getAdminGuard(): AdminGuard {
+  guard ??= createAdminGuard({ codeHash: process.env.ADMIN_CODE_HASH ?? "", sessionSecret: process.env.ADMIN_SESSION_SECRET ?? "" });
+  return guard;
+}
+
+export async function isAdmin(): Promise<boolean> {
+  return getAdminGuard().verifySession((await cookies()).get(ADMIN_SESSION_COOKIE)?.value);
+}
+```
+
+```ts
+// src/features/admin/enter.ts
+"use server";
+export async function enterAdmin(code: string): Promise<"ok" | "wrong-code" | "too-many-attempts"> {
+  const list = await headers();
+  const ip = list.get("x-real-ip") ?? list.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "inconnue";
+  const result = await getAdminGuard().signIn(code, ip);
+  if (!result.ok) return result.reason === "invalid-code" ? "wrong-code" : "too-many-attempts";
+  (await cookies()).set(ADMIN_SESSION_COOKIE, result.session, {
+    httpOnly: true, sameSite: "strict", path: "/", secure: process.env.NODE_ENV === "production", expires: new Date(result.expiresAt),
+  });
+  return "ok";
+}
+```
+
+La page `/admin` affiche `AdminCodeGate` tant que `isAdmin()` est faux (puis `router.refresh()` après `"ok"`).
+**Chaque action et chaque route admin revérifie `isAdmin()`** : cacher l'écran ne protège rien. Se déconnecter = supprimer le cookie.
 
 ## Ce qui reste propre à chaque jeu
 

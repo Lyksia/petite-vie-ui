@@ -1,7 +1,7 @@
 {
   "name": "@petite-vie/ui",
-  "version": "0.3.2",
-  "description": "Petite Vie — la charte commune des jeux (Parent Life, My Life, Pet Life) : thème Tailwind v4, utilitaires, composants d'interface et icônes dessinées, et le compte par code (écrans + logique serveur).",
+  "version": "0.4.0",
+  "description": "Petite Vie — la charte commune des jeux (Parent Life, My Life, Pet Life) : thème Tailwind v4, utilitaires, composants d'interface et icônes dessinées, le compte par code et l'accès admin à 8 chiffres (écrans + logique serveur).",
   "license": "UNLICENSED",
   "private": false,
   "type": "module",
@@ -21,7 +21,8 @@
     }
   },
   "bin": {
-    "petite-vie-ui-assets": "./bin/copy-assets.mjs"
+    "petite-vie-ui-assets": "./bin/copy-assets.mjs",
+    "petite-vie-admin-code": "./bin/admin-code.mjs"
   },
   "files": [
     "src",

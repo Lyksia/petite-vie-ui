@@ -1,4 +1,6 @@
-// @petite-vie/ui/compte/serveur — logique serveur des comptes par code (Node, sans React ni Next).
+// @petite-vie/ui/compte/serveur — logique serveur des comptes par code et de l'accès admin (Node, sans React ni Next).
+export { ADMIN_CODE_LENGTH, ADMIN_MESSAGES, normalizeAdminCode } from "../admin-code-format.js";
+export { ADMIN_GUARD, ADMIN_SESSION_COOKIE, createAdminGuard, generateAdminCode, hashAdminCode, verifyAdminCode, } from "./admin.js";
 export { ANSWER_MAX_LENGTH, normalizeAnswer } from "../answer-format.js";
 export { CODE_ALPHABET, CODE_LENGTH, formatCode, normalizeCode } from "../code-format.js";
 export { SECRET_QUESTION_IDS, SECRET_QUESTIONS, getSecretQuestion } from "../questions.js";
