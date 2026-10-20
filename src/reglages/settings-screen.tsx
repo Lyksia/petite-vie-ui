@@ -56,8 +56,8 @@ function AccountSection({ gameName, subjectName, account }: { gameName: string; 
   return (
     <Card className="gap-3">
       <CardTitle>Ton compte</CardTitle>
-      <p>Sans compte, tu ne peux pas retrouver ta partie sur un autre appareil. Avec un compte, tu retrouves {subjectName} partout, avec un simple code.</p>
-      <SecondaryButton onClick={account.onCreate}>Créer mon compte</SecondaryButton>
+      <p>Ton compte n&apos;a pas encore de code. Mets-le à jour pour retrouver {subjectName} sur n&apos;importe quel appareil, avec ce simple code.</p>
+      <SecondaryButton onClick={account.onCreate}>Mettre à jour mon compte</SecondaryButton>
       <QuietButton onClick={account.onSignIn} className="self-center">
         J&apos;ai déjà un code
       </QuietButton>

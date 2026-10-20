@@ -2,7 +2,7 @@
 export type SettingsAccount =
   /** Connecté : son code (ou `null` s'il n'est pas gardé ici), la déconnexion, et l'état de la sauvegarde en ligne. */
   | { status: "connected"; code: string | null; onSignOut: () => void; syncLine?: string }
-  /** Pas encore de compte sur cet appareil. */
+  /** Le joueur a une partie, mais son compte n'a pas encore de code : « Mettre à jour mon compte » (`onCreate`) ou « J'ai déjà un code ». */
   | { status: "signed-out"; onCreate: () => void; onSignIn: () => void }
   /** Le jeu n'a pas d'API configurée (développement) : la section n'est pas montrée. */
   | { status: "unavailable" };

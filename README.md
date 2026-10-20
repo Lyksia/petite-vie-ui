@@ -11,7 +11,7 @@ Extrait de Parent Life (v1) sans rien y changer. Chaque jeu choisit la version q
 Dépendance git épinglée sur un tag (pas de build : CSS et TSX source, transpilés par Next) :
 
 ```bash
-pnpm add github:Lyksia/petite-vie-ui#v0.5.4
+pnpm add github:Lyksia/petite-vie-ui#v0.5.5
 ```
 
 `next.config.ts` :
@@ -296,7 +296,7 @@ import { SettingsButton, SettingsScreen } from "@petite-vie/ui/reglages";
 ```
 
 - `account` : `connected` (code ou `null` s'il n'est pas gardé ici, déconnexion confirmée par le kit, ligne d'état de la sauvegarde
-  en ligne), `signed-out` (« Créer mon compte » / « J'ai déjà un code »), ou `unavailable` (pas d'API : section cachée).
+  en ligne), `signed-out` (« Mettre à jour mon compte » : le joueur a déjà une partie, il lui ajoute un code ; ou « J'ai déjà un code »), ou `unavailable` (pas d'API : section cachée).
 - `notifications` : obligatoires dans les trois jeux. `support` = `ok`, `install-first` (iPhone : ajouter à l'écran d'accueil)
   ou `unsupported`.
 - `save.parse(text)` rend `{ error }` ou `{ name, apply }` : le kit demande « Récupérer {name} ? » avant d'appeler `apply`.
