@@ -11,7 +11,7 @@ Extrait de Parent Life (v1) sans rien y changer. Chaque jeu choisit la version q
 Dépendance git épinglée sur un tag (pas de build : CSS et TSX source, transpilés par Next) :
 
 ```bash
-pnpm add github:Lyksia/petite-vie-ui#v0.5.3
+pnpm add github:Lyksia/petite-vie-ui#v0.5.4
 ```
 
 `next.config.ts` :
@@ -275,7 +275,7 @@ model OneTimeToken {
 **Un seul écran Réglages pour les trois jeux** (`@petite-vie/ui/reglages`) : même roue d'ouverture, même ordre, mêmes libellés.
 Le jeu ne fournit que ses données et ses actions.
 
-Ordre : **Ton compte · Notifications · Ta partie** (réglages propres au jeu, facultatif) **· Ta sauvegarde · À propos · Recommencer de zéro.**
+Ordre : **Ton compte · Notifications · Ta partie** (réglages propres au jeu, facultatif) **· À propos · Sauvegarde · avancé** (repliée : export et import) **· Recommencer de zéro.**
 
 ```tsx
 import { SettingsButton, SettingsScreen } from "@petite-vie/ui/reglages";

@@ -18,3 +18,11 @@
     display: none;
   }
 }
+
+/* Résumé d'un <details> sans le triangle du navigateur (Safari compris) : le kit pose sa propre flèche */
+@utility sans-marqueur {
+  list-style: none;
+  &::-webkit-details-marker {
+    display: none;
+  }
+}

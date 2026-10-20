@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, BellOff, CircleAlert, ExternalLink, Settings } from "lucide-react";
+import { Bell, BellOff, ChevronDown, CircleAlert, ExternalLink, Settings } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { PrimaryButton, QuietButton, SecondaryButton } from "../components/button";
 import { Card, CardTitle } from "../components/card";
@@ -107,7 +107,7 @@ function NotificationsSection({ gameName, subjectName, notifications }: { gameNa
 
 /**
  * L'écran Réglages, identique dans les trois jeux Petite Vie : même ordre, mêmes libellés.
- * Ton compte · Notifications · Ta partie (propre au jeu) · Ta sauvegarde · À propos · Recommencer de zéro.
+ * Ton compte · Notifications · Ta partie (propre au jeu) · À propos · Sauvegarde · avancé (repliée) · Recommencer de zéro.
  */
 export function SettingsScreen({ gameName, subjectName, account, notifications, save, restart, game, version }: SettingsScreenProps) {
   const { confirm, dialog } = useConfirm();
@@ -131,11 +131,6 @@ export function SettingsScreen({ gameName, subjectName, account, notifications, 
           </Card>
         )}
 
-        <Card className="gap-3">
-          <CardTitle>Ta sauvegarde</CardTitle>
-          <p>Emporte ta partie sur un autre appareil (texte ou fichier), ou récupères-en une.</p>
-          <SecondaryButton onClick={() => setTransfer(true)}>Exporter ou importer</SecondaryButton>
-        </Card>
 
         <Card className="gap-2">
           <CardTitle>À propos</CardTitle>
@@ -148,6 +143,17 @@ export function SettingsScreen({ gameName, subjectName, account, notifications, 
             Tous les jeux LKSN Games
           </a>
         </Card>
+
+        <details className="group rounded-fiche border-2 border-terre/30 bg-creme">
+          <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-5 font-bold sans-marqueur">
+            Sauvegarde · avancé
+            <ChevronDown aria-hidden className="size-5 shrink-0 transition group-open:rotate-180" />
+          </summary>
+          <div className="flex flex-col gap-3 px-5 pb-5">
+            <p className="text-base">Pour jouer sur un autre appareil sans compte : copie ta partie en texte ou en fichier, puis récupère-la là-bas.</p>
+            <SecondaryButton onClick={() => setTransfer(true)}>Exporter ou importer</SecondaryButton>
+          </div>
+        </details>
 
         <QuietButton
           className="self-center"
