@@ -11,7 +11,7 @@ Extrait de Parent Life (v1) sans rien y changer. Chaque jeu choisit la version q
 Dépendance git épinglée sur un tag (pas de build : CSS et TSX source, transpilés par Next) :
 
 ```bash
-pnpm add github:Lyksia/petite-vie-ui#v0.5.6
+pnpm add github:Lyksia/petite-vie-ui#v0.5.7
 ```
 
 `next.config.ts` :
@@ -121,6 +121,17 @@ import { ACCOUNT_MESSAGES, AccountFormError, CreateAccount, LostCode, Recover, S
 
 Le module exporte aussi les fonctions pures utiles au client : `formatCode`, `normalizeCode`, `normalizeAnswer`, `SECRET_QUESTIONS`, `getSecretQuestion`, `CodeDisplay`.
 Le kit ajoute `TextAreaField` aux composants communs, et `TextField` accepte désormais `hint`, `type`, `inputMode`, `autoCapitalize`, `spellCheck` et `inputClassName` (facultatifs).
+
+
+### Rappel : mettre à jour son compte
+
+Un joueur dont le compte n'a pas encore de code conforme (8 caractères) voit, **dans le jeu** (en tête de l'écran principal,
+pas seulement dans les Réglages), le bandeau `AccountUpdateNotice` : « Mets à jour ton compte » → `onUpdate`, ou « Plus tard ».
+Le jeu garde l'heure du « Plus tard » (stockage local) et ne remontre le rappel que si `accountNoticeDue(dismissedAt, now)`
+(3 jours, `ACCOUNT_NOTICE_INTERVAL_MS`).
+
+Qui le voit : une partie sans code (Life Story, Pet Life), une famille encore sur l'ancienne adresse avec son code de famille
+(Parent Life, où `onUpdate` lance le passage sur Parent Life).
 
 ### Côté API : `@petite-vie/ui/compte/serveur`
 
