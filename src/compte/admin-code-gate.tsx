@@ -1,7 +1,7 @@
 "use client";
 
 import { LockKeyhole } from "lucide-react";
-import { useId, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { PrimaryButton } from "../components/button";
 import { Card, Title } from "../components/card";
 import { TextField } from "../components/text-field";
@@ -16,10 +16,12 @@ export type AdminCodeGateProps = {
    * en cas de réussite, le jeu pose le cookie de session puis recharge ou redirige.
    */
   onSubmit: (code: string) => Promise<void>;
+  /** Illustration centrée au-dessus du champ (ex. un cadenas dessiné) ; elle remplace la petite icône du titre. */
+  illustration?: ReactNode;
 };
 
 /** Entrée de l'interface admin : un code de 8 chiffres, le même fonctionnement dans les trois jeux. */
-export function AdminCodeGate({ gameName, onSubmit }: AdminCodeGateProps) {
+export function AdminCodeGate({ gameName, onSubmit, illustration }: AdminCodeGateProps) {
   const titleId = useId();
   const codeId = useId();
   const [value, setValue] = useState("");
@@ -46,11 +48,20 @@ export function AdminCodeGate({ gameName, onSubmit }: AdminCodeGateProps) {
   return (
     <Card className="gap-5">
       <form onSubmit={submit} aria-labelledby={titleId} aria-busy={pending} className="flex flex-col gap-5">
-        <Title id={titleId}>
-          <span className="flex items-center gap-2">
-            <LockKeyhole aria-hidden className="size-6 shrink-0" />
-            Admin · {gameName}
-          </span>
+        {illustration && (
+          <div aria-hidden className="flex justify-center">
+            {illustration}
+          </div>
+        )}
+        <Title id={titleId} className={illustration ? "text-center" : ""}>
+          {illustration ? (
+            `Admin · ${gameName}`
+          ) : (
+            <span className="flex items-center gap-2">
+              <LockKeyhole aria-hidden className="size-6 shrink-0" />
+              Admin · {gameName}
+            </span>
+          )}
         </Title>
         <TextField
           id={codeId}
