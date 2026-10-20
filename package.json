@@ -1,6 +1,6 @@
 {
   "name": "@petite-vie/ui",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "Petite Vie — la charte commune des jeux (Parent Life, Life Story, Pet Life) : thème Tailwind v4, utilitaires, composants d'interface et icônes dessinées, le compte par code et l'accès admin à 8 chiffres (écrans + logique serveur).",
   "license": "UNLICENSED",
   "private": false,

@@ -22,12 +22,19 @@ export type CreateAccountProps = {
   onDone: (code: string) => void;
   /** Lien « J'ai déjà un compte ». */
   onSignInInstead?: () => void;
+  /**
+   * `mettre-a-jour` : le joueur a déjà une partie et lui ajoute un code (depuis les Réglages) ;
+   * titre et bouton disent alors « Mettre à jour ». Par défaut : `creer` (premier lancement).
+   */
+  mode?: "creer" | "mettre-a-jour";
   title?: string;
   intro?: ReactNode;
 };
 
 /** Création d'un compte : question secrète et réponse, puis affichage du code à noter. */
-export function CreateAccount({ gameName, onCreate, onDone, onSignInInstead, title = "Créer ton compte", intro }: CreateAccountProps) {
+export function CreateAccount({ gameName, onCreate, onDone, onSignInInstead, mode = "creer", title, intro }: CreateAccountProps) {
+  const updating = mode === "mettre-a-jour";
+  title ??= updating ? "Mettre à jour ton compte" : "Créer ton compte";
   const titleId = useId();
   const questionId = useId();
   const answerId = useId();
@@ -83,7 +90,7 @@ export function CreateAccount({ gameName, onCreate, onDone, onSignInInstead, tit
         />
         <FormError message={error} />
         <PrimaryButton type="submit" disabled={pending}>
-          {pending ? "Création…" : "Créer mon compte"}
+          {pending ? (updating ? "Mise à jour…" : "Création…") : updating ? "Mettre à jour mon compte" : "Créer mon compte"}
         </PrimaryButton>
         {onSignInInstead && (
           <QuietButton onClick={onSignInInstead} className="self-center">
