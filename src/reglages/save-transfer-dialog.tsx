@@ -124,9 +124,9 @@ export function SaveTransferDialog({ gameName, subjectName, save, importOnly = f
             error={error}
             hint={canExport ? `Attention : elle remplacera ${subjectName} sur cet appareil.` : undefined}
           />
-          <PrimaryButton onClick={() => read(pasted)}>Récupérer cette sauvegarde</PrimaryButton>
+          <PrimaryButton onClick={() => read(pasted)}>Récupérer</PrimaryButton>
           <label className="flex min-h-14 cursor-pointer items-center justify-center rounded-bouton border-2 border-sauge bg-sauge-claire px-5 font-bold shadow-relief-sauge">
-            Ouvrir un fichier de sauvegarde
+            Ouvrir un fichier
             <input
               type="file"
               accept=".txt,.json,text/plain,application/json"
