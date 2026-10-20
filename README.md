@@ -272,10 +272,11 @@ model OneTimeToken {
 
 ## Accès admin
 
-L'interface admin de chaque jeu s'ouvre avec **un code de 8 chiffres** (`1234 5678`), le même fonctionnement dans les trois jeux.
+L'admin commune aux trois jeux (petite-vie-admin.lksn.app, dossier `web-admin/`) s'ouvre avec **un code de 8 chiffres** (`1234 5678`).
+Les jeux n'ont pas de page admin à eux : l'admin commune les gère par leurs API.
 Le code n'est écrit nulle part : la configuration du jeu n'en garde que l'empreinte scrypt.
 
-**Tirer le code** (depuis le dossier d'un jeu qui a installé le kit) :
+**Tirer le code** (depuis `web-admin/`, ou tout dossier qui a installé le kit) :
 
 ```bash
 pnpm exec petite-vie-admin-code            # code tiré au hasard
@@ -284,8 +285,8 @@ pnpm exec petite-vie-admin-code 12345678   # ou un code choisi
 
 La commande affiche le code et deux variables, à mettre dans `.env.local` (et dans les variables d'environnement en ligne) :
 
-- `ADMIN_CODE_HASH` : l'empreinte du code. **La même dans les trois jeux** pour n'avoir qu'un code à retenir.
-- `ADMIN_SESSION_SECRET` : **propre à chaque jeu** (relancer la commande pour chacun) : une session ouverte dans un jeu n'ouvre pas les autres.
+- `ADMIN_CODE_HASH` : l'empreinte du code.
+- `ADMIN_SESSION_SECRET` : la clé qui signe les sessions.
 
 L'empreinte s'écrit avec des points (`scrypt.16384.8.1.…`), sans `$` : Next lit `.env*` avec dotenv-expand, qui prendrait chaque `$` pour une variable (empreinte tronquée, admin fermé). Une ancienne empreinte à `$` reste acceptée si les `$` sont échappés.
 
@@ -300,7 +301,7 @@ Limites : 5 essais / 15 min par adresse, et **20 essais / heure toutes adresses 
 plafond qui rend une attaque répartie sans espoir). Le prix : une attaque peut bloquer l'accès admin jusqu'à une heure ; les sessions
 déjà ouvertes et les joueurs ne sont pas touchés. Session : 12 h, jeton signé (HMAC) lié au code. Compteurs en mémoire, par processus.
 
-Branchement dans un jeu Next.js :
+Branchement dans l'admin (Next.js) :
 
 ```ts
 // src/features/admin/guard.ts
