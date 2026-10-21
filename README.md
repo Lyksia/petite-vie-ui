@@ -338,7 +338,7 @@ Changer de code = relancer la commande et remplacer `ADMIN_CODE_HASH` : toutes l
 
 | Côté | Ce que fournit le kit |
 |---|---|
-| Écran (`@petite-vie/ui/compte`) | `AdminCodeGate({ gameName, onSubmit, illustration? })` : saisie tolérante (`1234 5678`, `1234-5678`), clavier numérique. `onSubmit` reçoit le code normalisé ; lever `AccountFormError(ADMIN_MESSAGES.wrongCode)` ou `ADMIN_MESSAGES.tooManyAttempts` pour un refus. |
+| Écran (`@petite-vie/ui/compte`) | `AdminCodeGate({ gameName, onSubmit, illustration? })` : saisie tolérante (`1234 5678`, `1234-5678`), clavier numérique, sans exemple dans le champ. Avec `illustration`, l'image devient le bouton qui valide (sans en avoir l'air) et le bouton « Entrer » disparaît ; Entrée au clavier marche toujours. `onSubmit` reçoit le code normalisé ; lever `AccountFormError(ADMIN_MESSAGES.wrongCode)` ou `ADMIN_MESSAGES.tooManyAttempts` pour un refus. |
 | Serveur (`@petite-vie/ui/compte/serveur`) | `createAdminGuard({ codeHash, sessionSecret })` → `signIn(code, ip)` et `verifySession(cookie)`. `ADMIN_SESSION_COOKIE` (`petite-vie-admin`), `ADMIN_GUARD` (réglages), `hashAdminCode`, `verifyAdminCode`, `generateAdminCode`, `normalizeAdminCode`. |
 
 Limites : 5 essais / 15 min par adresse, et **20 essais / heure toutes adresses confondues** (avec 100 millions de codes, c'est ce

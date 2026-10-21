@@ -16,7 +16,10 @@ export type AdminCodeGateProps = {
    * en cas de réussite, le jeu pose le cookie de session puis recharge ou redirige.
    */
   onSubmit: (code: string) => Promise<void>;
-  /** Illustration centrée au-dessus du champ (ex. un cadenas dessiné) ; elle remplace la petite icône du titre. */
+  /**
+   * Illustration centrée au-dessus du champ (ex. un cadenas dessiné) ; elle remplace la petite icône du titre.
+   * Elle devient aussi, sans en avoir l'air, le bouton qui valide : le bouton « Entrer » disparaît (Entrée au clavier marche toujours).
+   */
   illustration?: ReactNode;
 };
 
@@ -49,8 +52,15 @@ export function AdminCodeGate({ gameName, onSubmit, illustration }: AdminCodeGat
     <Card className="gap-5">
       <form onSubmit={submit} aria-labelledby={titleId} aria-busy={pending} className="flex flex-col gap-5">
         {illustration && (
-          <div aria-hidden className="flex justify-center">
-            {illustration}
+          <div className="flex justify-center">
+            <button
+              type="submit"
+              disabled={pending}
+              aria-label={pending ? "Vérification…" : "Entrer"}
+              className="cursor-default rounded-full outline-none focus-visible:ring-4 focus-visible:ring-sauge/20"
+            >
+              {illustration}
+            </button>
           </div>
         )}
         <Title id={titleId} className={illustration ? "text-center" : ""}>
@@ -69,7 +79,6 @@ export function AdminCodeGate({ gameName, onSubmit, illustration }: AdminCodeGat
           value={value}
           onChange={setValue}
           maxLength={11}
-          placeholder="1234 5678"
           error={fieldError}
           autoComplete="off"
           inputMode="numeric"
@@ -77,9 +86,11 @@ export function AdminCodeGate({ gameName, onSubmit, illustration }: AdminCodeGat
           inputClassName="font-display tracking-widest"
         />
         <FormError message={error} />
-        <PrimaryButton type="submit" disabled={pending}>
-          {pending ? "Vérification…" : "Entrer"}
-        </PrimaryButton>
+        {!illustration && (
+          <PrimaryButton type="submit" disabled={pending}>
+            {pending ? "Vérification…" : "Entrer"}
+          </PrimaryButton>
+        )}
       </form>
     </Card>
   );
