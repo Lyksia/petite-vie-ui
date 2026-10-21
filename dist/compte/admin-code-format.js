@@ -4,7 +4,7 @@ const VALID_ADMIN_CODE = new RegExp(`^\\d{${ADMIN_CODE_LENGTH}}$`);
 /** Messages de l'écran admin, à réutiliser par les jeux pour traduire les refus du serveur. */
 export const ADMIN_MESSAGES = {
     invalidCode: "Accès refusé",
-    wrongCode: "Ce n'est pas le bon code.",
+    wrongCode: "Accès refusé",
     tooManyAttempts: "Trop d'essais. L'accès admin est bloqué un moment, réessaie plus tard.",
 };
 /**
