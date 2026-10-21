@@ -2,7 +2,7 @@
 export declare const ADMIN_CODE_LENGTH = 8;
 /** Messages de l'écran admin, à réutiliser par les jeux pour traduire les refus du serveur. */
 export declare const ADMIN_MESSAGES: {
-    readonly invalidCode: "Le code admin fait 8 chiffres, comme 1234 5678.";
+    readonly invalidCode: "Accès refusé";
     readonly wrongCode: "Ce n'est pas le bon code.";
     readonly tooManyAttempts: "Trop d'essais. L'accès admin est bloqué un moment, réessaie plus tard.";
 };

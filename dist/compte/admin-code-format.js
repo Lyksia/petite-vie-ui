@@ -3,7 +3,7 @@ export const ADMIN_CODE_LENGTH = 8;
 const VALID_ADMIN_CODE = new RegExp(`^\\d{${ADMIN_CODE_LENGTH}}$`);
 /** Messages de l'écran admin, à réutiliser par les jeux pour traduire les refus du serveur. */
 export const ADMIN_MESSAGES = {
-    invalidCode: "Le code admin fait 8 chiffres, comme 1234 5678.",
+    invalidCode: "Accès refusé",
     wrongCode: "Ce n'est pas le bon code.",
     tooManyAttempts: "Trop d'essais. L'accès admin est bloqué un moment, réessaie plus tard.",
 };
